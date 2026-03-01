@@ -3,118 +3,223 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Chat con la Base de Datos de Recepción</title>
-    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.39.8"></script>
+    <title>HHU - Iniciar Sesión</title>
+    <!-- 1. Importar el cliente de Supabase -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <style>
-        body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; background-color: #f0f2f5; margin: 0; display: flex; justify-content: center; align-items: center; height: 100vh; }
-        .chat-container { width: 90%; max-width: 600px; height: 80vh; background: white; border-radius: 12px; box-shadow: 0 8px 24px rgba(0,0,0,0.1 ); display: flex; flex-direction: column; }
-        #chat-window { flex-grow: 1; overflow-y: auto; padding: 20px; }
-        .message { margin-bottom: 15px; padding: 10px 15px; border-radius: 18px; max-width: 80%; line-height: 1.4; }
-        .user-message { background-color: #007bff; color: white; align-self: flex-end; margin-left: auto; }
-        .ia-message { background-color: #e9e9eb; color: #333; align-self: flex-start; }
-        .error-message { background-color: #ffebee; color: #c62828; border: 1px solid #c62828; }
-        #input-area { display: flex; padding: 15px; border-top: 1px solid #ddd; }
-        #user-input { flex-grow: 1; padding: 10px; border: 1px solid #ccc; border-radius: 20px; font-size: 16px; }
-        #send-button { background: #007bff; color: white; border: none; border-radius: 50%; width: 45px; height: 45px; margin-left: 10px; font-size: 20px; cursor: pointer; }
-        pre { background-color: #2d2d2d; color: #f8f8f2; padding: 10px; border-radius: 5px; white-space: pre-wrap; word-wrap: break-word; }
+        body { font-family: sans-serif; display: flex; justify-content: center; align-items: center; height: 100vh; margin: 0; background-color: #f4f7f6; }
+        .login-container { background-color: white; padding: 40px; border-radius: 8px; box-shadow: 0 4px 10px rgba(0,0,0,0.1 ); text-align: center; width: 320px; }
+        h1 { color: #2c3e50; margin-bottom: 20px; }
+        .input-group { margin-bottom: 20px; text-align: left; }
+        label { display: block; margin-bottom: 5px; color: #34495e; }
+        input { width: 100%; padding: 10px; border: 1px solid #bdc3c7; border-radius: 4px; box-sizing: border-box; }
+        button { width: 100%; padding: 12px; background-color: #3498db; color: white; border: none; border-radius: 4px; cursor: pointer; font-size: 16px; }
+        button:hover { background-color: #2980b9; }
+        .error-message { color: #e74c3c; margin-top: 15px; display: none; }
+    </style>
+</head>
+<body>
+    <div class="login-container">
+        <h1>Horario HHU</h1>
+        <form id="login-form">
+            <div class="input-group">
+                <label for="email">Email (Usuario)</label>
+                <input type="email" id="email" name="email" required value="admin@hhu.com">
+            </div>
+            <div class="input-group">
+                <label for="password">Contraseña</label>
+                <input type="password" id="password" name="password" required value="admin123">
+            </div>
+            <button type="submit">Ingresar</button>
+            <p id="error-message" class="error-message"></p>
+        </form>
+    </div>
+
+    <script>
+        // 2. Configurar el cliente de Supabase con tus nuevas credenciales
+        const supabaseUrl = 'https://rrubzwdrsuyjntoewmew.supabase.co';
+        const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJydWJ6d2Ryc3V5am50b2VqbWV3Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzIxNDgxMzksImV4cCI6MjA4NzcyNDEzOX0.2skpmRdeb43Ck0IUAKyBcW5g3KAHPf7_st-QaAJ2K0E';
+        const supabase = supabase.createClient(supabaseUrl, supabaseKey );
+
+        const loginForm = document.getElementById('login-form');
+        const errorMessage = document.getElementById('error-message');
+
+        loginForm.addEventListener('submit', async (event) => {
+            event.preventDefault(); // Prevenir el envío tradicional del formulario
+            
+            const email = document.getElementById('email').value;
+            const password = document.getElementById('password').value;
+            errorMessage.style.display = 'none'; // Ocultar errores previos
+
+            // 3. Intentar iniciar sesión con Supabase
+            const { data, error } = await supabase.auth.signInWithPassword({
+                email: email,
+                password: password,
+            });
+
+            if (error) {
+                console.error('Error en el login:', error.message);
+                errorMessage.textContent = 'Usuario o contraseña incorrectos.';
+                errorMessage.style.display = 'block';
+            } else {
+                console.log('Login exitoso:', data);
+                alert('¡Login exitoso! Redirigiendo al panel de administración...');
+                // Guardamos la sesión para usarla en la siguiente página
+                localStorage.setItem('supabase.auth.token', JSON.stringify(data.session));
+                window.location.href = "calendario.html";
+            }
+        });
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>HHU - Modificar Horario</title>
+    <!-- 1. Importar librería para arrastrar y soltar (SortableJS) -->
+    <script src="https://cdn.jsdelivr.net/npm/sortablejs@latest/Sortable.min.js"></script>
+    <style>
+        body { font-family: sans-serif; background-color: #ecf0f1; color: #2c3e50; padding: 20px; }
+        .main-container { max-width: 900px; margin: auto; background-color: white; padding: 20px; border-radius: 8px; box-shadow: 0 4px 10px rgba(0,0,0,0.1 ); }
+        .header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; border-bottom: 2px solid #bdc3c7; padding-bottom: 15px; }
+        .header h1 { margin: 0; font-size: 24px; }
+        .nav-button { background-color: #95a5a6; color: white; padding: 10px 20px; border: none; border-radius: 4px; cursor: pointer; font-size: 16px; }
+        .nav-button:hover { background-color: #7f8c8d; }
+        .turno-container { display: none; /* Se mostrará con JS */ }
+        .turno-container.active { display: block; }
+        .turno-header { display: flex; justify-content: space-between; align-items: center; background-color: #3498db; color: white; padding: 10px 15px; border-radius: 4px; margin-bottom: 15px; }
+        .turno-header h2 { margin: 0; }
+        .ubicacion-lista { list-style: none; padding: 0; }
+        .ubicacion-item { display: flex; align-items: center; padding: 10px; border: 1px solid #ddd; border-radius: 4px; margin-bottom: 10px; }
+        .ubicacion-nombre { font-weight: bold; width: 150px; color: #34495e; }
+        .personal-fichas { flex-grow: 1; display: flex; gap: 10px; min-height: 40px; /* Área para soltar */ }
+        .ficha-personal { background-color: #ecf0f1; padding: 8px 12px; border-radius: 4px; cursor: grab; border: 1px solid #bdc3c7; user-select: none; }
+        .ficha-personal:active { cursor: grabbing; }
+        .sortable-ghost { opacity: 0.4; background: #c8ebfb; } /* Estilo del fantasma al arrastrar */
     </style>
 </head>
 <body>
 
-<div class="chat-container">
-    <div id="chat-window">
-        <div class="message ia-message">Hola, soy tu asistente de base de datos. ¿Qué información necesitas de la tabla de registros?</div>
+    <div class="main-container">
+        <div class="header">
+            <a href="calendario.html" class="nav-button">&larr; Volver al Calendario</a>
+            <h1 id="fecha-titulo">Modificando: 01 de Marzo, 2026</h1>
+            <button class="nav-button" onclick="guardarCambios()">Guardar Cambios</button>
+        </div>
+
+        <!-- Contenedor para el Turno de Día -->
+        <div id="turno-dia" class="turno-container active">
+            <div class="turno-header">
+                <h2>Turno Día</h2>
+                <button class="nav-button" onclick="mostrarTurno('noche')">Ver Turno Noche &rarr;</button>
+            </div>
+            <ul class="ubicacion-lista" id="lista-dia">
+                <!-- Las ubicaciones y el personal se cargarán aquí con JavaScript -->
+            </ul>
+        </div>
+
+        <!-- Contenedor para el Turno de Noche -->
+        <div id="turno-noche" class="turno-container">
+            <div class="turno-header">
+                <button class="nav-button" onclick="mostrarTurno('dia')">&larr; Ver Turno Día</button>
+                <h2>Turno Noche</h2>
+            </div>
+            <ul class="ubicacion-lista" id="lista-noche">
+                <!-- Las ubicaciones y el personal se cargarán aquí con JavaScript -->
+            </ul>
+        </div>
     </div>
-    <div id="input-area">
-        <input type="text" id="user-input" placeholder="Ej: busca al paciente Juan Perez...">
-        <button id="send-button">→</button>
-    </div>
-</div>
 
-<script>
-    // Tus claves de Supabase (¡estas son públicas y seguras de poner aquí!)
-    const supabaseUrl = 'https://esiklpxyectbekxvajnw.supabase.co';
-    const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImVzaWtscHh5ZWN0YmVreHZham53Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjE2OTI1MjEsImV4cCI6MjA3NzI2ODUyMX0.mtQnqUrTmhmN1DQxOAUnGpizhYZobStHDH0cz_XfKGU';
-    const supabase = window.supabase.createClient(supabaseUrl, supabaseKey );
+    <script>
+        // --- DATOS DE EJEMPLO (Esto vendría de Supabase) ---
+        const ubicacionesTecnicos = ["MUESTRA", "UCIM", "LADO I", "LADO II", "S. MENTAL", "SALIDA"];
+        const personalDia = [
+            { nombre: "DIAZ H.", ubicacion: "MUESTRA" },
+            { nombre: "FARFAN S.", ubicacion: "MUESTRA" },
+            { nombre: "AUQUIPATA S.", ubicacion: "UCIM" },
+            { nombre: "MONTERO P.", ubicacion: "LADO I" },
+            { nombre: "VALDIVIA I.", ubicacion: "LADO II" },
+        ];
+        const personalNoche = [
+            { nombre: "CCOSCCO S.", ubicacion: "MUESTRA" },
+            { nombre: "GUEVARA S.", ubicacion: "UCIM" },
+            { nombre: "HERNANDEZ P.", ubicacion: "LADO I" },
+        ];
 
-    const chatWindow = document.getElementById('chat-window');
-    const userInput = document.getElementById('user-input');
-    const sendButton = document.getElementById('send-button');
+        // --- LÓGICA DE LA PÁGINA ---
+        
+        // Función para renderizar las listas
+        function renderizarListas() {
+            const listaDiaEl = document.getElementById('lista-dia');
+            const listaNocheEl = document.getElementById('lista-noche');
+            listaDiaEl.innerHTML = '';
+            listaNocheEl.innerHTML = '';
 
-    sendButton.addEventListener('click', handleUserMessage);
-    userInput.addEventListener('keypress', (e) => {
-        if (e.key === 'Enter') {
-            handleUserMessage();
-        }
-    });
-
-    function addMessage(text, type, isRawJson = false) {
-        const messageDiv = document.createElement('div');
-        messageDiv.classList.add('message', type);
-        if (isRawJson) {
-            messageDiv.innerHTML = `<pre>${text}</pre>`;
-        } else {
-            messageDiv.textContent = text;
-        }
-        chatWindow.appendChild(messageDiv);
-        chatWindow.scrollTop = chatWindow.scrollHeight;
-    }
-
-    async function handleUserMessage() {
-        const pregunta = userInput.value.trim();
-        if (!pregunta) return;
-
-        addMessage(pregunta, 'user-message');
-        userInput.value = '';
-        addMessage('Pensando...', 'ia-message', false);
-
-        try {
-            // 1. Llamar a la Edge Function para que la IA convierta la pregunta en un plan JSON
-            const { data: plan, error: planError } = await supabase.functions.invoke('chat-con-ia', {
-                body: { pregunta },
+            // Renderizar ubicaciones de DÍA
+            ubicacionesTecnicos.forEach(nombreUbicacion => {
+                const item = document.createElement('li');
+                item.classList.add('ubicacion-item');
+                item.innerHTML = `<div class="ubicacion-nombre">${nombreUbicacion}</div><div class="personal-fichas" id="ubicacion-dia-${nombreUbicacion.replace(/\s+/g, '')}"></div>`;
+                listaDiaEl.appendChild(item);
             });
 
-            if (planError) throw planError;
-            if (plan.error) throw new Error(plan.error);
-            
-            // Mostramos el plan que generó la IA (muy útil para depurar)
-            document.querySelector('.ia-message:last-child').remove(); // Quita el "Pensando..."
-            addMessage('Plan de la IA:\n' + JSON.stringify(plan, null, 2), 'ia-message', true);
+            // Renderizar ubicaciones de NOCHE
+            ubicacionesTecnicos.forEach(nombreUbicacion => {
+                const item = document.createElement('li');
+                item.classList.add('ubicacion-item');
+                item.innerHTML = `<div class="ubicacion-nombre">${nombreUbicacion}</div><div class="personal-fichas" id="ubicacion-noche-${nombreUbicacion.replace(/\s+/g, '')}"></div>`;
+                listaNocheEl.appendChild(item);
+            });
 
-            // 2. Construir y ejecutar la consulta de Supabase basada en el plan de la IA
-            let query = supabase.from(plan.tabla).select(plan.columnas);
+            // Colocar al personal de DÍA en sus ubicaciones
+            personalDia.forEach(p => {
+                const contenedor = document.getElementById(`ubicacion-dia-${p.ubicacion.replace(/\s+/g, '')}`);
+                if (contenedor) {
+                    contenedor.innerHTML += `<div class="ficha-personal">${p.nombre}</div>`;
+                }
+            });
 
-            if (plan.filtros && plan.filtros.length > 0) {
-                plan.filtros.forEach(filtro => {
-                    query = query[filtro.operador](filtro.columna, filtro.valor);
+            // Colocar al personal de NOCHE en sus ubicaciones
+            personalNoche.forEach(p => {
+                const contenedor = document.getElementById(`ubicacion-noche-${p.ubicacion.replace(/\s+/g, '')}`);
+                if (contenedor) {
+                    contenedor.innerHTML += `<div class="ficha-personal">${p.nombre}</div>`;
+                }
+            });
+
+            // 2. Hacer que todas las áreas de fichas sean "arrastrables"
+            document.querySelectorAll('.personal-fichas').forEach(el => {
+                new Sortable(el, {
+                    group: 'personal', // Permite mover fichas entre diferentes listas
+                    animation: 150,
+                    ghostClass: 'sortable-ghost'
                 });
-            }
-            
-            if (plan.accion === 'count') {
-                query = query.select('*', { count: 'exact', head: true });
-            }
-
-            const { data: resultados, error: dbError, count } = await query;
-
-            if (dbError) throw dbError;
-
-            // 3. Mostrar los resultados al usuario
-            if (plan.accion === 'count') {
-                addMessage(`Respuesta: Se encontraron ${count} registros.`, 'ia-message');
-            } else if (resultados.length === 0) {
-                addMessage('No encontré resultados para tu consulta.', 'ia-message');
-            } else {
-                const respuestaFormateada = 'Resultados:\n' + JSON.stringify(resultados, null, 2);
-                addMessage(respuestaFormateada, 'ia-message', true);
-            }
-
-        } catch (error) {
-            console.error('Error en el proceso:', error);
-            document.querySelector('.ia-message:last-child').remove(); // Quita el "Pensando..."
-            addMessage(`Error: ${error.message}`, 'error-message');
+            });
         }
-    }
-</script>
 
+        // Función para cambiar entre la vista de día y noche
+        function mostrarTurno(turno) {
+            document.getElementById('turno-dia').classList.toggle('active', turno === 'dia');
+            document.getElementById('turno-noche').classList.toggle('active', turno === 'noche');
+        }
+
+        // Función para simular el guardado de cambios
+        function guardarCambios() {
+            // Aquí iría la lógica para leer el nuevo orden y enviarlo a Supabase
+            let resultado = "NUEVO ORDEN:\n";
+            document.querySelectorAll('#lista-dia .ubicacion-item').forEach(item => {
+                const ubicacion = item.querySelector('.ubicacion-nombre').innerText;
+                const nombres = Array.from(item.querySelectorAll('.ficha-personal')).map(ficha => ficha.innerText);
+                if (nombres.length > 0) {
+                    resultado += `\nUbicación DÍA ${ubicacion}:\n- ${nombres.join('\n- ')}\n`;
+                }
+            });
+            alert(resultado);
+            // Aquí llamaríamos a una función tipo: await supabase.from('horarios').upsert(...)
+        }
+
+        // Renderizar todo al cargar la página
+        document.addEventListener('DOMContentLoaded', renderizarListas);
+
+    </script>
 </body>
 </html>
