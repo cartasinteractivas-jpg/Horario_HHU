@@ -5,102 +5,130 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>HHU - Administración</title>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="https://cdn.jsdelivr.net/npm/sortablejs@latest/Sortable.min.js"></script>
     <style>
         body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; background-color: #f0f2f5; color: #1c1c1e; margin: 0; }
         .hidden { display: none !important; }
 
-        /* Estilos del Login */
-        .login-page { display: grid; place-items: center; min-height: 100vh; }
-        .login-container { background-color: #ffffff; padding: 2rem; border-radius: 8px; box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1 ); text-align: center; width: clamp(280px, 90vw, 350px); }
-        .login-container h1 { color: #1c1c1e; margin-top: 0; margin-bottom: 1.5rem; }
-        .input-group { margin-bottom: 1rem; text-align: left; }
-        .input-group label { display: block; margin-bottom: 0.5rem; color: #3c3c43; font-weight: 500; }
-        .input-group input { width: 100%; padding: 0.75rem; border: 1px solid #c7c7cc; border-radius: 6px; box-sizing: border-box; font-size: 1rem; }
-        .login-container button { width: 100%; padding: 0.85rem; background-color: #007aff; color: white; border: none; border-radius: 6px; cursor: pointer; font-size: 1rem; font-weight: 600; }
-        .error-message { color: #ff3b30; margin-top: 1rem; font-size: 0.9rem; display: none; }
-
-        /* Estilos del Calendario */
-        .calendar-page { padding: 1.5rem; }
-        .container { max-width: 1100px; margin: 0 auto; background-color: #ffffff; padding: 1.5rem; border-radius: 8px; box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1); }
+        /* --- Estilos Comunes --- */
+        .page-container { padding: 1.5rem; }
+        .card { background: white; padding: 1.5rem; border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.1 ); }
         .header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem; flex-wrap: wrap; gap: 1rem; }
         .header h1 { margin: 0; font-size: 1.75rem; }
-        .controls { display: flex; align-items: center; gap: 1rem; }
-        .selector-personal { padding: 0.5rem; font-size: 1rem; border-radius: 6px; border: 1px solid #c7c7cc; }
-        #logout-button { background-color: #ff3b30; color: white; padding: 0.5rem 1rem; border: none; border-radius: 6px; cursor: pointer; font-weight: 500; }
+        .nav-button { background-color: #007aff; color: white; padding: 0.6rem 1.2rem; border: none; border-radius: 6px; cursor: pointer; text-decoration: none; font-weight: 500; }
+
+        /* --- Estilos Vista Login --- */
+        #login-view { display: grid; place-items: center; min-height: 100vh; }
+        .login-container { width: clamp(280px, 90vw, 350px); }
+        .input-group { margin-bottom: 1rem; text-align: left; }
+        .input-group label { display: block; margin-bottom: 0.5rem; font-weight: 500; }
+        .input-group input { width: 100%; padding: 0.75rem; border: 1px solid #c7c7cc; border-radius: 6px; box-sizing: border-box; font-size: 1rem; }
+        .error-message { color: #ff3b30; margin-top: 1rem; font-size: 0.9rem; display: none; }
+
+        /* --- Estilos Vista Calendario --- */
+        .calendar-container { max-width: 1100px; margin: 0 auto; }
         .calendario-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 0.5rem; }
         .dia-semana { font-weight: 600; color: #6c6c70; text-align: center; padding: 0.5rem 0; }
-        .dia-calendario { background-color: #f9f9f9; border: 1px solid #e5e5ea; min-height: 100px; display: flex; flex-direction: column; justify-content: space-between; padding: 0.5rem; border-radius: 6px; }
+        .dia-calendario { border: 1px solid #e5e5ea; min-height: 100px; padding: 0.5rem; border-radius: 6px; cursor: pointer; transition: background-color 0.2s; }
+        .dia-calendario:hover { background-color: #eef5ff; }
         .dia-numero { font-weight: 500; }
-        .dia-vacio { background-color: transparent; border: none; }
-        .boton-dia { background-color: #007aff; color: white; border: none; border-radius: 5px; padding: 0.5rem; cursor: pointer; width: 100%; font-weight: 500; margin-top: 0.5rem; }
+        .dia-vacio { border: none; cursor: default; }
+
+        /* --- Estilos Vista Modificación (Puzzle) --- */
+        .puzzle-container { display: flex; gap: 2rem; max-width: 1400px; margin: auto; }
+        .tabla-container { flex-grow: 1; }
+        .personal-container { width: 250px; }
+        .personal-container h2 { font-size: 1.2rem; margin-top: 0; margin-bottom: 1rem; }
+        table { width: 100%; border-collapse: collapse; }
+        th, td { border: 1px solid #c7c7cc; padding: 0.5rem; text-align: left; }
+        th { background-color: #f2f2f7; }
+        .ubicacion-col { width: 150px; font-weight: 600; }
+        .drop-zone { min-height: 38px; display: flex; flex-wrap: wrap; align-items: center; gap: 4px; }
+        .ficha-personal { background-color: #eef5ff; padding: 8px 12px; border-radius: 4px; cursor: grab; border: 1px solid #007aff; user-select: none; text-align: center; font-size: 0.9rem; }
+        #personal-dia-pool, #personal-noche-pool { min-height: 100px; border: 2px dashed #c7c7cc; padding: 0.5rem; border-radius: 6px; }
     </style>
 </head>
 <body>
 
-    <!-- Contenedor de la Vista de Login -->
-    <div id="login-view" class="login-page">
-        <div class="login-container">
+    <!-- VISTA 1: LOGIN (se muestra al inicio) -->
+    <div id="login-view" class="page-container">
+        <div class="login-container card">
             <h1>Horario HHU</h1>
             <form id="login-form">
-                <div class="input-group">
-                    <label for="usuario">Usuario</label>
-                    <input type="text" id="usuario" required>
-                </div>
-                <div class="input-group">
-                    <label for="password">Contraseña</label>
-                    <input type="password" id="password" required>
-                </div>
-                <button type="submit">Ingresar</button>
-                <p id="error-message" class="error-message"></p>
+                <div class="input-group"><label for="usuario">Usuario</label><input type="text" id="usuario" required></div>
+                <div class="input-group"><label for="password">Contraseña</label><input type="password" id="password" required></div>
+                <button type="submit">Ingresar</button><p id="error-message" class="error-message"></p>
             </form>
         </div>
     </div>
 
-    <!-- Contenedor de la Vista de Calendario (oculto por defecto) -->
-    <div id="calendar-view" class="calendar-page hidden">
-        <div class="container">
+    <!-- VISTA 2: CALENDARIO (oculta al inicio) -->
+    <div id="calendar-view" class="page-container hidden">
+        <div class="calendar-container card">
             <div class="header">
                 <h1>Horarios - Marzo 2026</h1>
                 <div class="controls">
-                    <select id="selectorPersonal" class="selector-personal">
-                        <option value="Enfermero">Enfermeros</option>
-                        <option value="Técnico">Técnicos</option>
-                    </select>
-                    <button id="logout-button">Cerrar Sesión</button>
+                    <select id="selectorPersonal" class="selector-personal"><option value="Enfermero">Enfermeros</option><option value="Técnico">Técnicos</option></select>
+                    <button id="logout-button" class="nav-button" style="background-color: #ff3b30;">Cerrar Sesión</button>
                 </div>
             </div>
             <div class="calendario-grid">
-                <div class="dia-semana">LUN</div> <div class="dia-semana">MAR</div> <div class="dia-semana">MIÉ</div> <div class="dia-semana">JUE</div> <div class="dia-semana">VIE</div> <div class="dia-semana">SÁB</div> <div class="dia-semana">DOM</div>
+                <div class="dia-semana">LUN</div><div class="dia-semana">MAR</div><div class="dia-semana">MIÉ</div><div class="dia-semana">JUE</div><div class="dia-semana">VIE</div><div class="dia-semana">SÁB</div><div class="dia-semana">DOM</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- VISTA 3: PUZZLE DE MODIFICACIÓN (oculta al inicio) -->
+    <div id="puzzle-view" class="page-container hidden">
+        <div class="puzzle-container">
+            <div class="tabla-container card">
+                <div class="header">
+                    <h1 id="titulo-dia"></h1>
+                    <div>
+                        <button class="nav-button" style="background-color: #6c6c70;" onclick="showView('calendar')">Volver</button>
+                        <button class="nav-button" onclick="guardarCambios()">Guardar Cambios</button>
+                    </div>
+                </div>
+                <table>
+                    <thead><tr><th>Ubicación</th><th>Turno Día</th><th>Turno Noche</th></tr></thead>
+                    <tbody id="tabla-ubicaciones"></tbody>
+                </table>
+            </div>
+            <div class="personal-container card">
+                <h2>Personal de Turno (Día)</h2>
+                <div id="personal-dia-pool" class="drop-zone"></div>
+                <h2 style="margin-top: 2rem;">Personal de Turno (Noche)</h2>
+                <div id="personal-noche-pool" class="drop-zone"></div>
             </div>
         </div>
     </div>
 
     <script>
-        // --- ELEMENTOS DEL DOM ---
+        // --- CONFIGURACIÓN Y ELEMENTOS GLOBALES ---
+        const supabaseUrl = 'https://rrubzwdrsuyjntoewmew.supabase.co';
+        const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJydWJ6d2Ryc3V5am50b2VqbWV3Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzIxNDgxMzksImV4cCI6MjA4NzcyNDEzOX0.2skpmRdeb43Ck0IUAKyBcW5g3KAHPf7_st-QaAJ2K0E';
+        const supabase = supabase.createClient(supabaseUrl, supabaseKey );
+
         const loginView = document.getElementById('login-view');
         const calendarView = document.getElementById('calendar-view');
+        const puzzleView = document.getElementById('puzzle-view');
         const loginForm = document.getElementById('login-form');
         const usuarioInput = document.getElementById('usuario');
         const logoutButton = document.getElementById('logout-button');
 
-        // --- LÓGICA DE LA APLICACIÓN ---
-
-        // Función para cambiar entre vistas
+        // --- FUNCIÓN PRINCIPAL DE NAVEGACIÓN ---
         function showView(viewName) {
             loginView.classList.toggle('hidden', viewName !== 'login');
             calendarView.classList.toggle('hidden', viewName !== 'calendar');
+            puzzleView.classList.toggle('hidden', viewName !== 'puzzle');
         }
-
-        // Función para manejar el intento de login
+        // --- LÓGICA DE LOGIN Y SESIÓN ---
         function handleLogin() {
-            const usuario = usuarioInput.value;
-            const password = document.getElementById('password').value;
-            
-            if (usuario === 'admin' && password === 'admin123') {
+            if (usuarioInput.value === 'admin' && document.getElementById('password').value === 'admin123') {
                 localStorage.setItem('hhu_admin_logged_in', 'true');
-                localStorage.setItem('hhu_admin_username', usuario);
-                showView('calendar'); // Muestra el calendario
-                renderCalendar(); // Dibuja el calendario
+                localStorage.setItem('hhu_admin_username', usuarioInput.value);
+                showView('calendar');
+                renderCalendar();
             } else {
                 const errorMessage = document.getElementById('error-message');
                 errorMessage.textContent = 'Usuario o contraseña incorrectos.';
@@ -108,65 +136,102 @@
             }
         }
 
-        // Función para cerrar sesión
         function handleLogout() {
             localStorage.removeItem('hhu_admin_logged_in');
-            showView('login'); // Muestra el login
-        }
-
-        // --- INICIALIZACIÓN ---
-
-        // Llenar el campo de usuario si ya se ha usado antes
-        const savedUsername = localStorage.getItem('hhu_admin_username');
-        if (savedUsername) {
-            usuarioInput.value = savedUsername;
-        }
-
-        // Configurar los listeners de eventos
-        loginForm.addEventListener('submit', (event) => {
-            event.preventDefault();
-            handleLogin();
-        });
-        logoutButton.addEventListener('click', handleLogout);
-
-        // Decidir qué vista mostrar al cargar la página
-        if (localStorage.getItem('hhu_admin_logged_in') === 'true') {
-            showView('calendar');
-            renderCalendar();
-        } else {
             showView('login');
         }
 
-        // --- LÓGICA DEL CALENDARIO (se mantiene igual) ---
+        // --- LÓGICA DEL CALENDARIO ---
         function renderCalendar() {
-            const calendarioGrid = document.querySelector('.calendario-grid');
-            const mes = 2; const ano = 2026;
-            const primerDiaSemana = new Date(ano, mes, 1).getDay();
-            const diasEnMes = new Date(ano, mes + 1, 0).getDate();
-            const offset = (primerDiaSemana === 0) ? 6 : primerDiaSemana - 1;
-
+            const grid = document.querySelector('.calendario-grid');
             document.querySelectorAll('.dia-calendario, .dia-vacio').forEach(el => el.remove());
-
-            for (let i = 0; i < offset; i++) {
-                calendarioGrid.appendChild(document.createElement('div')).classList.add('dia-vacio');
-            }
-
+            const mes = 2, ano = 2026;
+            const primerDia = new Date(ano, mes, 1).getDay();
+            const offset = (primerDia === 0) ? 6 : primerDia - 1;
+            for (let i = 0; i < offset; i++) { grid.appendChild(document.createElement('div')).classList.add('dia-vacio'); }
+            const diasEnMes = new Date(ano, mes + 1, 0).getDate();
             for (let dia = 1; dia <= diasEnMes; dia++) {
-                const celdaDia = document.createElement('div');
-                celdaDia.classList.add('dia-calendario');
-                celdaDia.innerHTML = `<div class="dia-numero">${dia}</div><button class="boton-dia" onclick="modificarDia(${dia})">Modificar</button>`;
-                calendarioGrid.appendChild(celdaDia);
+                const celda = document.createElement('div');
+                celda.className = 'dia-calendario';
+                celda.innerHTML = `<div class="dia-numero">${dia}</div>`;
+                celda.onclick = () => initializePuzzleView(dia);
+                grid.appendChild(celda);
             }
         }
 
-        function modificarDia(dia) {
-            const personalSeleccionado = document.getElementById('selectorPersonal').value;
-            localStorage.setItem('diaSeleccionado', dia);
-            localStorage.setItem('personalSeleccionado', personalSeleccionado);
-            // Aquí seguimos necesitando una página separada para el puzzle,
-            // o hacer esta página aún más compleja. Por ahora, mantenemos la redirección.
-            window.location.href = 'modificar_dia.html';
+        // --- LÓGICA DEL PUZZLE DE MODIFICACIÓN ---
+        async function initializePuzzleView(dia) {
+            showView('puzzle');
+            const tipoPersonal = document.getElementById('selectorPersonal').value;
+            const fecha = `2026-03-${String(dia).padStart(2, '0')}`;
+            document.getElementById('titulo-dia').textContent = `Guardia del ${dia} de Marzo - ${tipoPersonal}s`;
+
+            // Limpiar vistas anteriores
+            document.getElementById('tabla-ubicaciones').innerHTML = 'Cargando...';
+            document.getElementById('personal-dia-pool').innerHTML = '';
+            document.getElementById('personal-noche-pool').innerHTML = '';
+
+            // Cargar datos de Supabase
+            const { data: ubicaciones } = await supabase.from('ubicaciones').select('id, nombre_ubicacion').eq('tipo_personal', tipoPersonal).order('id');
+            const { data: horarios } = await supabase.from('horarios').select('id, orden_en_turno, ubicacion_id, personal(nombre_completo), codigos_turno(tipo_turno)').eq('fecha', fecha).eq('personal.tipo_personal', tipoPersonal);
+
+            // Renderizar la tabla y el personal
+            const tbody = document.getElementById('tabla-ubicaciones');
+            tbody.innerHTML = '';
+            ubicaciones.forEach(ubi => {
+                tbody.innerHTML += `<tr><td class="ubicacion-col">${ubi.nombre_ubicacion}</td><td><div class="drop-zone" data-turno="Día" data-ubicacion-id="${ubi.id}"></div></td><td><div class="drop-zone" data-turno="Noche" data-ubicacion-id="${ubi.id}"></div></td></tr>`;
+            });
+
+            const diaPool = document.getElementById('personal-dia-pool');
+            const nochePool = document.getElementById('personal-noche-pool');
+            horarios.forEach(h => {
+                const ficha = document.createElement('div');
+                ficha.className = 'ficha-personal';
+                ficha.textContent = h.personal.nombre_completo.split(',')[0]; // Apellido
+                ficha.dataset.horarioId = h.id;
+
+                const turno = h.codigos_turno.tipo_turno;
+                if (h.ubicacion_id) {
+                    const zona = document.querySelector(`.drop-zone[data-turno="${turno}"][data-ubicacion-id="${h.ubicacion_id}"]`);
+                    if (zona) zona.appendChild(ficha);
+                } else {
+                    if (turno === 'Día' || turno === 'Mañana' || turno === 'Tarde') diaPool.appendChild(ficha);
+                    else if (turno === 'Noche') nochePool.appendChild(ficha);
+                }
+            });
+
+            // Activar el arrastrar y soltar
+            document.querySelectorAll('.drop-zone').forEach(el => new Sortable(el, { group: 'personal', animation: 150 }));
         }
+
+        async function guardarCambios() {
+            const updates = [];
+            document.querySelectorAll('.drop-zone').forEach(zona => {
+                const ubicacionId = zona.dataset.ubicacionId;
+                zona.querySelectorAll('.ficha-personal').forEach((ficha, index) => {
+                    updates.push({ id: parseInt(ficha.dataset.horarioId), ubicacion_id: ubicacionId ? parseInt(ubicacionId) : null, orden_en_turno: index + 1 });
+                });
+            });
+            
+            const { error } = await supabase.from('horarios').upsert(updates);
+            if (error) alert("Error al guardar: " + error.message);
+            else alert("¡Cambios guardados con éxito!");
+        }
+
+        // --- INICIALIZACIÓN DE LA APLICACIÓN ---
+        document.addEventListener('DOMContentLoaded', () => {
+            loginForm.addEventListener('submit', (e) => { e.preventDefault(); handleLogin(); });
+            logoutButton.addEventListener('click', handleLogout);
+
+            if (localStorage.getItem('hhu_admin_logged_in') === 'true') {
+                const savedUsername = localStorage.getItem('hhu_admin_username');
+                if (savedUsername) usuarioInput.value = savedUsername;
+                showView('calendar');
+                renderCalendar();
+            } else {
+                showView('login');
+            }
+        });
     </script>
 </body>
 </html>
