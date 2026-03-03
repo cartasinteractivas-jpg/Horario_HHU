@@ -4,9 +4,10 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>HHU - Iniciar Sesión</title>
-    <!-- 1. Importar el cliente de Supabase -->
+    <!-- Importamos el cliente de Supabase desde un CDN, perfecto para HTML puro -->
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <style>
+        /* Mismos estilos de antes */
         body { font-family: sans-serif; display: flex; justify-content: center; align-items: center; height: 100vh; margin: 0; background-color: #f4f7f6; }
         .login-container { background-color: white; padding: 40px; border-radius: 8px; box-shadow: 0 4px 10px rgba(0,0,0,0.1 ); text-align: center; width: 320px; }
         h1 { color: #2c3e50; margin-bottom: 20px; }
@@ -23,12 +24,12 @@
         <h1>Horario HHU</h1>
         <form id="login-form">
             <div class="input-group">
-                <label for="email">Email (Usuario)</label>
-                <input type="email" id="email" name="email" required value="admin@hhu.com">
+                <label for="email">Email</label>
+                <input type="email" id="email" required placeholder="tu@email.com">
             </div>
             <div class="input-group">
                 <label for="password">Contraseña</label>
-                <input type="password" id="password" name="password" required value="admin123">
+                <input type="password" id="password" required>
             </div>
             <button type="submit">Ingresar</button>
             <p id="error-message" class="error-message"></p>
@@ -36,7 +37,7 @@
     </div>
 
     <script>
-        // 2. Configurar el cliente de Supabase con tus nuevas credenciales
+        // 1. Configuración del cliente de Supabase (usando tus nuevas credenciales)
         const supabaseUrl = 'https://rrubzwdrsuyjntoewmew.supabase.co';
         const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJydWJ6d2Ryc3V5am50b2VqbWV3Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzIxNDgxMzksImV4cCI6MjA4NzcyNDEzOX0.2skpmRdeb43Ck0IUAKyBcW5g3KAHPf7_st-QaAJ2K0E';
         const supabase = supabase.createClient(supabaseUrl, supabaseKey );
@@ -44,29 +45,33 @@
         const loginForm = document.getElementById('login-form');
         const errorMessage = document.getElementById('error-message');
 
+        // Redirigir si ya hay una sesión activa
+        supabase.auth.onAuthStateChange((event, session) => {
+            if (session) {
+                // Si hay una sesión, no deberíamos estar en el login. Vamos al calendario.
+                window.location.href = 'calendario.html';
+            }
+        });
+
         loginForm.addEventListener('submit', async (event) => {
-            event.preventDefault(); // Prevenir el envío tradicional del formulario
+            event.preventDefault();
             
             const email = document.getElementById('email').value;
             const password = document.getElementById('password').value;
-            errorMessage.style.display = 'none'; // Ocultar errores previos
+            errorMessage.style.display = 'none';
 
-            // 3. Intentar iniciar sesión con Supabase
+            // 2. Intentar iniciar sesión
             const { data, error } = await supabase.auth.signInWithPassword({
                 email: email,
                 password: password,
             });
 
             if (error) {
-                console.error('Error en el login:', error.message);
                 errorMessage.textContent = 'Usuario o contraseña incorrectos.';
                 errorMessage.style.display = 'block';
             } else {
-                console.log('Login exitoso:', data);
-                alert('¡Login exitoso! Redirigiendo al panel de administración...');
-                // Guardamos la sesión para usarla en la siguiente página
-                localStorage.setItem('supabase.auth.token', JSON.stringify(data.session));
-                window.location.href = "calendario.html";
+                // El onAuthStateChange de arriba se encargará de la redirección.
+                // No es necesario hacer nada más aquí.
             }
         });
 <!DOCTYPE html>
@@ -74,152 +79,102 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>HHU - Modificar Horario</title>
-    <!-- 1. Importar librería para arrastrar y soltar (SortableJS) -->
-    <script src="https://cdn.jsdelivr.net/npm/sortablejs@latest/Sortable.min.js"></script>
+    <title>HHU - Administración de Horarios</title>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <style>
+        /* Mismos estilos de antes */
         body { font-family: sans-serif; background-color: #ecf0f1; color: #2c3e50; padding: 20px; }
-        .main-container { max-width: 900px; margin: auto; background-color: white; padding: 20px; border-radius: 8px; box-shadow: 0 4px 10px rgba(0,0,0,0.1 ); }
-        .header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; border-bottom: 2px solid #bdc3c7; padding-bottom: 15px; }
-        .header h1 { margin: 0; font-size: 24px; }
-        .nav-button { background-color: #95a5a6; color: white; padding: 10px 20px; border: none; border-radius: 4px; cursor: pointer; font-size: 16px; }
-        .nav-button:hover { background-color: #7f8c8d; }
-        .turno-container { display: none; /* Se mostrará con JS */ }
-        .turno-container.active { display: block; }
-        .turno-header { display: flex; justify-content: space-between; align-items: center; background-color: #3498db; color: white; padding: 10px 15px; border-radius: 4px; margin-bottom: 15px; }
-        .turno-header h2 { margin: 0; }
-        .ubicacion-lista { list-style: none; padding: 0; }
-        .ubicacion-item { display: flex; align-items: center; padding: 10px; border: 1px solid #ddd; border-radius: 4px; margin-bottom: 10px; }
-        .ubicacion-nombre { font-weight: bold; width: 150px; color: #34495e; }
-        .personal-fichas { flex-grow: 1; display: flex; gap: 10px; min-height: 40px; /* Área para soltar */ }
-        .ficha-personal { background-color: #ecf0f1; padding: 8px 12px; border-radius: 4px; cursor: grab; border: 1px solid #bdc3c7; user-select: none; }
-        .ficha-personal:active { cursor: grabbing; }
-        .sortable-ghost { opacity: 0.4; background: #c8ebfb; } /* Estilo del fantasma al arrastrar */
+        .header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; flex-wrap: wrap; }
+        .header h1 { margin: 0; }
+        .controls { display: flex; align-items: center; gap: 15px; }
+        .selector-personal { padding: 8px; font-size: 16px; border-radius: 4px; }
+        #logout-button { background-color: #e74c3c; color: white; padding: 8px 15px; border: none; border-radius: 4px; cursor: pointer; }
+        .calendario-grid { display: grid; grid-template-columns: repeat(7, 1fr ); gap: 5px; }
+        .dia-semana, .dia-calendario { background-color: white; padding: 10px; text-align: center; border-radius: 4px; }
+        .dia-semana { font-weight: bold; background-color: #95a5a6; color: white; }
+        .dia-calendario { min-height: 80px; display: flex; flex-direction: column; justify-content: space-between; }
+        .dia-numero { font-size: 18px; font-weight: bold; align-self: flex-start; }
+        .dia-vacio { background-color: transparent; border: none; }
+        .boton-dia { background-color: #3498db; color: white; border: none; border-radius: 4px; padding: 8px; cursor: pointer; width: 100%; }
+        .boton-dia:hover { background-color: #2980b9; }
     </style>
 </head>
 <body>
 
-    <div class="main-container">
-        <div class="header">
-            <a href="calendario.html" class="nav-button">&larr; Volver al Calendario</a>
-            <h1 id="fecha-titulo">Modificando: 01 de Marzo, 2026</h1>
-            <button class="nav-button" onclick="guardarCambios()">Guardar Cambios</button>
-        </div>
-
-        <!-- Contenedor para el Turno de Día -->
-        <div id="turno-dia" class="turno-container active">
-            <div class="turno-header">
-                <h2>Turno Día</h2>
-                <button class="nav-button" onclick="mostrarTurno('noche')">Ver Turno Noche &rarr;</button>
-            </div>
-            <ul class="ubicacion-lista" id="lista-dia">
-                <!-- Las ubicaciones y el personal se cargarán aquí con JavaScript -->
-            </ul>
-        </div>
-
-        <!-- Contenedor para el Turno de Noche -->
-        <div id="turno-noche" class="turno-container">
-            <div class="turno-header">
-                <button class="nav-button" onclick="mostrarTurno('dia')">&larr; Ver Turno Día</button>
-                <h2>Turno Noche</h2>
-            </div>
-            <ul class="ubicacion-lista" id="lista-noche">
-                <!-- Las ubicaciones y el personal se cargarán aquí con JavaScript -->
-            </ul>
+    <div class="header">
+        <h1>Horarios - Marzo 2026</h1>
+        <div class="controls">
+            <select id="selectorPersonal" class="selector-personal">
+                <option value="Enfermero">Enfermeros</option>
+                <option value="Técnico">Técnicos</option>
+            </select>
+            <button id="logout-button">Cerrar Sesión</button>
         </div>
     </div>
 
+    <div class="calendario-grid">
+        <div class="dia-semana">L</div> <div class="dia-semana">M</div> <div class="dia-semana">X</div> <div class="dia-semana">J</div> <div class="dia-semana">V</div> <div class="dia-semana">S</div> <div class="dia-semana">D</div>
+    </div>
+
     <script>
-        // --- DATOS DE EJEMPLO (Esto vendría de Supabase) ---
-        const ubicacionesTecnicos = ["MUESTRA", "UCIM", "LADO I", "LADO II", "S. MENTAL", "SALIDA"];
-        const personalDia = [
-            { nombre: "DIAZ H.", ubicacion: "MUESTRA" },
-            { nombre: "FARFAN S.", ubicacion: "MUESTRA" },
-            { nombre: "AUQUIPATA S.", ubicacion: "UCIM" },
-            { nombre: "MONTERO P.", ubicacion: "LADO I" },
-            { nombre: "VALDIVIA I.", ubicacion: "LADO II" },
-        ];
-        const personalNoche = [
-            { nombre: "CCOSCCO S.", ubicacion: "MUESTRA" },
-            { nombre: "GUEVARA S.", ubicacion: "UCIM" },
-            { nombre: "HERNANDEZ P.", ubicacion: "LADO I" },
-        ];
+        // 1. Misma configuración del cliente Supabase
+        const supabaseUrl = 'https://rrubzwdrsuyjntoewmew.supabase.co';
+        const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJydWJ6d2Ryc3V5am50b2VqbWV3Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzIxNDgxMzksImV4cCI6MjA4NzcyNDEzOX0.2skpmRdeb43Ck0IUAKyBcW5g3KAHPf7_st-QaAJ2K0E';
+        const supabase = supabase.createClient(supabaseUrl, supabaseKey );
 
-        // --- LÓGICA DE LA PÁGINA ---
+        // 2. Proteger la página
+        supabase.auth.onAuthStateChange((event, session) => {
+            if (!session) {
+                // Si no hay sesión (o el usuario cierra sesión), lo enviamos al login.
+                window.location.href = 'login.html';
+            }
+        });
+
+        // 3. Lógica para cerrar sesión
+        document.getElementById('logout-button').addEventListener('click', async () => {
+            await supabase.auth.signOut();
+            // El onAuthStateChange de arriba se encargará de la redirección.
+        });
+
+        // --- Lógica del Calendario ---
+        function renderCalendar() {
+            const calendarioGrid = document.querySelector('.calendario-grid');
+            const mes = 2; // Marzo
+            const ano = 2026;
+            const primerDiaSemana = new Date(ano, mes, 1).getDay();
+            const diasEnMes = new Date(ano, mes + 1, 0).getDate();
+            const offset = (primerDiaSemana === 0) ? 6 : primerDiaSemana - 1;
+
+            // Limpiar calendario anterior antes de re-dibujar
+            document.querySelectorAll('.dia-calendario, .dia-vacio').forEach(el => el.remove());
+
+            for (let i = 0; i < offset; i++) {
+                const div = document.createElement('div');
+                div.classList.add('dia-vacio');
+                calendarioGrid.appendChild(div);
+            }
+
+            for (let dia = 1; dia <= diasEnMes; dia++) {
+                const celdaDia = document.createElement('div');
+                celdaDia.classList.add('dia-calendario');
+                celdaDia.innerHTML = `<div class="dia-numero">${dia}</div><button class="boton-dia" onclick="modificarDia(${dia})">Modificar</button>`;
+                calendarioGrid.appendChild(celdaDia);
+            }
+        }
+
+        function modificarDia(dia) {
+            const personalSeleccionado = document.getElementById('selectorPersonal').value;
+            // Guardamos los parámetros en localStorage para que la otra página los lea
+            localStorage.setItem('diaSeleccionado', dia);
+            localStorage.setItem('personalSeleccionado', personalSeleccionado);
+            // Redirigimos a la página del puzzle
+            window.location.href = 'modificar_dia.html';
+        }
         
-        // Función para renderizar las listas
-        function renderizarListas() {
-            const listaDiaEl = document.getElementById('lista-dia');
-            const listaNocheEl = document.getElementById('lista-noche');
-            listaDiaEl.innerHTML = '';
-            listaNocheEl.innerHTML = '';
-
-            // Renderizar ubicaciones de DÍA
-            ubicacionesTecnicos.forEach(nombreUbicacion => {
-                const item = document.createElement('li');
-                item.classList.add('ubicacion-item');
-                item.innerHTML = `<div class="ubicacion-nombre">${nombreUbicacion}</div><div class="personal-fichas" id="ubicacion-dia-${nombreUbicacion.replace(/\s+/g, '')}"></div>`;
-                listaDiaEl.appendChild(item);
-            });
-
-            // Renderizar ubicaciones de NOCHE
-            ubicacionesTecnicos.forEach(nombreUbicacion => {
-                const item = document.createElement('li');
-                item.classList.add('ubicacion-item');
-                item.innerHTML = `<div class="ubicacion-nombre">${nombreUbicacion}</div><div class="personal-fichas" id="ubicacion-noche-${nombreUbicacion.replace(/\s+/g, '')}"></div>`;
-                listaNocheEl.appendChild(item);
-            });
-
-            // Colocar al personal de DÍA en sus ubicaciones
-            personalDia.forEach(p => {
-                const contenedor = document.getElementById(`ubicacion-dia-${p.ubicacion.replace(/\s+/g, '')}`);
-                if (contenedor) {
-                    contenedor.innerHTML += `<div class="ficha-personal">${p.nombre}</div>`;
-                }
-            });
-
-            // Colocar al personal de NOCHE en sus ubicaciones
-            personalNoche.forEach(p => {
-                const contenedor = document.getElementById(`ubicacion-noche-${p.ubicacion.replace(/\s+/g, '')}`);
-                if (contenedor) {
-                    contenedor.innerHTML += `<div class="ficha-personal">${p.nombre}</div>`;
-                }
-            });
-
-            // 2. Hacer que todas las áreas de fichas sean "arrastrables"
-            document.querySelectorAll('.personal-fichas').forEach(el => {
-                new Sortable(el, {
-                    group: 'personal', // Permite mover fichas entre diferentes listas
-                    animation: 150,
-                    ghostClass: 'sortable-ghost'
-                });
-            });
-        }
-
-        // Función para cambiar entre la vista de día y noche
-        function mostrarTurno(turno) {
-            document.getElementById('turno-dia').classList.toggle('active', turno === 'dia');
-            document.getElementById('turno-noche').classList.toggle('active', turno === 'noche');
-        }
-
-        // Función para simular el guardado de cambios
-        function guardarCambios() {
-            // Aquí iría la lógica para leer el nuevo orden y enviarlo a Supabase
-            let resultado = "NUEVO ORDEN:\n";
-            document.querySelectorAll('#lista-dia .ubicacion-item').forEach(item => {
-                const ubicacion = item.querySelector('.ubicacion-nombre').innerText;
-                const nombres = Array.from(item.querySelectorAll('.ficha-personal')).map(ficha => ficha.innerText);
-                if (nombres.length > 0) {
-                    resultado += `\nUbicación DÍA ${ubicacion}:\n- ${nombres.join('\n- ')}\n`;
-                }
-            });
-            alert(resultado);
-            // Aquí llamaríamos a una función tipo: await supabase.from('horarios').upsert(...)
-        }
-
-        // Renderizar todo al cargar la página
-        document.addEventListener('DOMContentLoaded', renderizarListas);
-
+        // Renderizar el calendario al cargar la página
+        renderCalendar();
     </script>
+
 </body>
 </html>
+
