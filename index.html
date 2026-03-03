@@ -4,9 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>HHU - Iniciar Sesión</title>
-    <!-- Ya no necesitamos el script de Supabase aquí -->
     <style>
-        /* Usamos los mismos estilos visuales de antes */
         body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; display: grid; place-items: center; min-height: 100vh; margin: 0; background-color: #f0f2f5; }
         .login-container { background-color: #ffffff; padding: 2rem; border-radius: 8px; box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1); text-align: center; width: clamp(280px, 90vw, 350px); }
         h1 { color: #1c1c1e; margin-top: 0; margin-bottom: 1.5rem; }
@@ -24,11 +22,11 @@
         <form id="login-form">
             <div class="input-group">
                 <label for="usuario">Usuario</label>
-                <input type="text" id="usuario" required value="admin">
+                <input type="text" id="usuario" required>
             </div>
             <div class="input-group">
                 <label for="password">Contraseña</label>
-                <input type="text" id="password" required value="admin123">
+                <input type="password" id="password" required>
             </div>
             <button type="submit">Ingresar</button>
             <p id="error-message" class="error-message"></p>
@@ -37,89 +35,41 @@
 
     <script>
         const loginForm = document.getElementById('login-form');
+        const usuarioInput = document.getElementById('usuario');
         const errorMessage = document.getElementById('error-message');
 
-        // 1. Comprobar si el usuario ya "inició sesión"
-        // Usamos localStorage para recordar si el usuario ha pasado el login
-        if (localStorage.getItem('hhu_admin_logged_in') === 'true') {
-            window.location.href = 'calendario.html';
-        }
-
-        loginForm.addEventListener('submit', (event) => {
-            event.preventDefault();
+        // Función para manejar el intento de login
+        function handleLogin() {
+            const usuario = usuarioInput.value;
+            const password = document.getElementById('password').value;
             
-            const usuarioInput = document.getElementById('usuario').value;
-            const passwordInput = document.getElementById('password').value;
-            errorMessage.style.display = 'none';
-
-            // 2. La validación ahora es una simple comparación de texto
-            if (usuarioInput === 'admin' && passwordInput === 'admin123') {
-                // Si es correcto, guardamos una "bandera" en el navegador
+            if (usuario === 'admin' && password === 'admin123') {
+                // Si es correcto, guardamos el estado y el nombre de usuario
                 localStorage.setItem('hhu_admin_logged_in', 'true');
-                // Y redirigimos al calendario
+                localStorage.setItem('hhu_admin_username', usuario);
                 window.location.href = 'calendario.html';
             } else {
-                // Si no, mostramos un error
                 errorMessage.textContent = 'Usuario o contraseña incorrectos.';
                 errorMessage.style.display = 'block';
             }
+        }
+
+        // 1. Llenar el campo de usuario si ya se ha usado antes
+        const savedUsername = localStorage.getItem('hhu_admin_username');
+        if (savedUsername) {
+            usuarioInput.value = savedUsername;
+        }
+
+        // 2. Escuchar el evento 'submit' del formulario (funciona con clic y con Enter)
+        loginForm.addEventListener('submit', (event) => {
+            event.preventDefault(); // Prevenir que la página se recargue
+            handleLogin();
         });
-// Pega esto al final de tu calendario.html, reemplazando el <script> anterior
 
-<script>
-    // 1. Comprobar si nuestra "bandera" de login existe.
-    // Si no es 'true', significa que el usuario no ha pasado por el login.
-    if (localStorage.getItem('hhu_admin_logged_in') !== 'true') {
-        alert("Acceso denegado. Por favor, inicie sesión.");
-        window.location.href = 'login.html'; // ¡Fuera de aquí!
-    }
-
-    // El resto del código del calendario se conecta a Supabase para OBTENER DATOS,
-    // lo cual es seguro porque usa la clave pública (anon key).
-    const supabaseUrl = 'https://rrubzwdrsuyjntoewmew.supabase.co';
-    const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJydWJ6d2Ryc3V5am50b2VqbWV3Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzIxNDgxMzksImV4cCI6MjA4NzcyNDEzOX0.2skpmRdeb43Ck0IUAKyBcW5g3KAHPf7_st-QaAJ2K0E';
-    const supabase = supabase.createClient(supabaseUrl, supabaseKey );
-
-    // Lógica para cerrar sesión
-    document.getElementById('logout-button').addEventListener('click', () => {
-        // Al cerrar sesión, simplemente borramos nuestra "bandera"
-        localStorage.removeItem('hhu_admin_logged_in');
-        window.location.href = 'login.html';
-    });
-
-    // --- El resto de la lógica del calendario sigue igual ---
-    function renderCalendar() {
-        const calendarioGrid = document.querySelector('.calendario-grid');
-        const mes = 2; const ano = 2026;
-        const primerDiaSemana = new Date(ano, mes, 1).getDay();
-        const diasEnMes = new Date(ano, mes + 1, 0).getDate();
-        const offset = (primerDiaSemana === 0) ? 6 : primerDiaSemana - 1;
-
-        document.querySelectorAll('.dia-calendario, .dia-vacio').forEach(el => el.remove());
-
-        for (let i = 0; i < offset; i++) {
-            const div = document.createElement('div');
-            div.classList.add('dia-vacio');
-            calendarioGrid.appendChild(div);
+        // 3. Redirigir si el usuario ya está logueado
+        if (localStorage.getItem('hhu_admin_logged_in') === 'true') {
+            window.location.href = 'calendario.html';
         }
-
-        for (let dia = 1; dia <= diasEnMes; dia++) {
-            const celdaDia = document.createElement('div');
-            celdaDia.classList.add('dia-calendario');
-            celdaDia.innerHTML = `<div class="dia-numero">${dia}</div><button class="boton-dia" onclick="modificarDia(${dia})">Modificar</button>`;
-            calendarioGrid.appendChild(celdaDia);
-        }
-    }
-
-    function modificarDia(dia) {
-        const personalSeleccionado = document.getElementById('selectorPersonal').value;
-        localStorage.setItem('diaSeleccionado', dia);
-        localStorage.setItem('personalSeleccionado', personalSeleccionado);
-        window.location.href = 'modificar_dia.html';
-    }
-    
-    // Renderizar el calendario (solo se ejecutará si el chequeo de arriba pasa)
-    renderCalendar();
-</script>
+    </script>
 </body>
 </html>
