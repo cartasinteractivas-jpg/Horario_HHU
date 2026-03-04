@@ -93,120 +93,125 @@
 
     <script>
         // --- INICIO DEL SCRIPT ---
-        const supabaseUrl = 'https://rrubzwdrsuyjntoewmew.supabase.co';
-        const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJydWJ6d2Ryc3V5am50b2VqbWV3Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzIxNDgxMzksImV4cCI6MjA4NzcyNDEzOX0.2skpmRdeb43Ck0IUAKyBcW5g3KAHPf7_st-QaAJ2K0E';
-        const supabase = supabase.createClient(supabaseUrl, supabaseKey );
-
-        const views = {
-            login: document.getElementById('login-view'),
-            calendar: document.getElementById('calendar-view'),
-            puzzle: document.getElementById('puzzle-view')
-        };
-
-        function showView(viewName) {
-            for (const key in views) {
-                views[key].classList.toggle('hidden', key !== viewName);
-            }
-        }
-
-        function login() {
-            const user = document.getElementById('usuario').value;
-            const pass = document.getElementById('password').value;
-            if (user === 'admin' && pass === 'admin123') {
-                localStorage.setItem('hhu_admin_logged_in', 'true');
-                localStorage.setItem('hhu_admin_username', user);
-                showView('calendar');
-                renderCalendar();
-            } else {
-                const errorMsg = document.getElementById('error-message');
-                errorMsg.textContent = 'Usuario o contraseña incorrectos.';
-                errorMsg.style.display = 'block';
-            }
-        }
-
-        function logout() {
-            localStorage.removeItem('hhu_admin_logged_in');
-            document.getElementById('password').value = '';
-            showView('login');
-        }
-
-        function renderCalendar() {
-            const grid = document.querySelector('.calendario-grid');
-            document.querySelectorAll('.dia-calendario, .dia-vacio').forEach(el => el.remove());
-            const mes = 2, ano = 2026;
-            const primerDia = new Date(ano, mes, 1).getDay();
-            const offset = (primerDia === 0) ? 6 : primerDia - 1;
-            for (let i = 0; i < offset; i++) { grid.appendChild(document.createElement('div')).classList.add('dia-vacio'); }
-            const diasEnMes = new Date(ano, mes + 1, 0).getDate();
-            for (let dia = 1; dia <= diasEnMes; dia++) {
-                const celda = document.createElement('div');
-                celda.className = 'dia-calendario';
-                celda.innerHTML = `<div class="dia-numero">${dia}</div>`;
-                celda.onclick = () => initializePuzzleView(dia);
-                grid.appendChild(celda);
-            }
-        }
-
-        async function initializePuzzleView(dia) {
-            const tipoPersonal = document.getElementById('selectorPersonal').value;
-            showView('puzzle');
-            document.getElementById('titulo-dia').textContent = `Guardia del ${dia} de Marzo - ${tipoPersonal}s`;
-            
-            const tablaBody = document.getElementById('tabla-ubicaciones');
-            const diaPool = document.getElementById('personal-dia-pool');
-            const nochePool = document.getElementById('personal-noche-pool');
-            tablaBody.innerHTML = '<tr><td colspan="3">Cargando datos...</td></tr>';
-            diaPool.innerHTML = '';
-            nochePool.innerHTML = '';
-
-            const fecha = `2026-03-${String(dia).padStart(2, '0')}`;
-            const { data: ubicaciones } = await supabase.from('ubicaciones').select('id, nombre_ubicacion').eq('tipo_personal', tipoPersonal).order('id');
-            const { data: horarios } = await supabase.from('horarios').select('id, ubicacion_id, personal(nombre_completo), codigos_turno(tipo_turno)').eq('fecha', fecha).eq('personal.tipo_personal', tipoPersonal);
-
-            tablaBody.innerHTML = '';
-            ubicaciones.forEach(ubi => {
-                tablaBody.innerHTML += `<tr><td class="ubicacion-col">${ubi.nombre_ubicacion}</td><td><div class="drop-zone" data-turno="Día" data-ubicacion-id="${ubi.id}"></div></td><td><div class="drop-zone" data-turno="Noche" data-ubicacion-id="${ubi.id}"></div></td></tr>`;
-            });
-
-            horarios.forEach(h => {
-                const ficha = document.createElement('div');
-                ficha.className = 'ficha-personal';
-                ficha.textContent = h.personal.nombre_completo.split(',')[0];
-                ficha.dataset.horarioId = h.id;
-                const turno = h.codigos_turno.tipo_turno;
-                let targetZone;
-                if (h.ubicacion_id) {
-                    targetZone = document.querySelector(`.drop-zone[data-turno="${turno}"][data-ubicacion-id="${h.ubicacion_id}"]`);
-                }
-                if (!targetZone) {
-                    targetZone = (turno === 'Día' || turno === 'Mañana' || turno === 'Tarde') ? diaPool : nochePool;
-                }
-                targetZone.appendChild(ficha);
-            });
-
-            document.querySelectorAll('.drop-zone').forEach(el => new Sortable(el, { group: 'personal', animation: 150 }));
-        }
-
-        async function guardarCambios() {
-            const updates = [];
-            document.querySelectorAll('.drop-zone').forEach(zona => {
-                const ubicacionId = zona.dataset.ubicacionId;
-                zona.querySelectorAll('.ficha-personal').forEach((ficha, index) => {
-                    updates.push({ id: parseInt(ficha.dataset.horarioId), ubicacion_id: ubicacionId ? parseInt(ubicacionId) : null, orden_en_turno: index + 1 });
-                });
-            });
-            
-            const { error } = await supabase.from('horarios').upsert(updates);
-            if (error) {
-                alert("Error al guardar: " + error.message);
-            } else {
-                alert("¡Cambios guardados con éxito!");
-                showView('calendar');
-            }
-        }
-
-        // PUNTO DE ENTRADA DE LA APLICACIÓN
         document.addEventListener('DOMContentLoaded', () => {
+            // 1. DEFINICIÓN DE ELEMENTOS Y CONFIGURACIÓN
+            const supabaseUrl = 'https://rrubzwdrsuyjntoewmew.supabase.co';
+            const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJydWJ6d2Ryc3V5am50b2VqbWV3Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzIxNDgxMzksImV4cCI6MjA4NzcyNDEzOX0.2skpmRdeb43Ck0IUAKyBcW5g3KAHPf7_st-QaAJ2K0E';
+            const supabase = supabase.createClient(supabaseUrl, supabaseKey );
+
+            const views = {
+                login: document.getElementById('login-view'),
+                calendar: document.getElementById('calendar-view'),
+                puzzle: document.getElementById('puzzle-view')
+            };
+
+            // 2. LÓGICA DE NAVEGACIÓN Y SESIÓN (FUNCIONES)
+            const showView = (viewName) => {
+                for (const key in views) {
+                    views[key].classList.toggle('hidden', key !== viewName);
+                }
+            };
+
+            const login = () => {
+                const user = document.getElementById('usuario').value;
+                const pass = document.getElementById('password').value;
+                if (user === 'admin' && pass === 'admin123') {
+                    localStorage.setItem('hhu_admin_logged_in', 'true');
+                    localStorage.setItem('hhu_admin_username', user);
+                    showView('calendar');
+                    renderCalendar();
+                } else {
+                    const errorMsg = document.getElementById('error-message');
+                    errorMsg.textContent = 'Usuario o contraseña incorrectos.';
+                    errorMsg.style.display = 'block';
+                }
+            };
+
+            const logout = () => {
+                localStorage.removeItem('hhu_admin_logged_in');
+                document.getElementById('password').value = '';
+                showView('login');
+            };
+
+            // 3. LÓGICA DE LAS VISTAS (CALENDARIO Y PUZZLE)
+            const renderCalendar = () => {
+                const grid = document.querySelector('.calendario-grid');
+                document.querySelectorAll('.dia-calendario, .dia-vacio').forEach(el => el.remove());
+                const mes = 2, ano = 2026;
+                const primerDia = new Date(ano, mes, 1).getDay();
+                const offset = (primerDia === 0) ? 6 : primerDia - 1;
+                for (let i = 0; i < offset; i++) { grid.appendChild(document.createElement('div')).classList.add('dia-vacio'); }
+                const diasEnMes = new Date(ano, mes + 1, 0).getDate();
+                for (let dia = 1; dia <= diasEnMes; dia++) {
+                    const celda = document.createElement('div');
+                    celda.className = 'dia-calendario';
+                    celda.innerHTML = `<div class="dia-numero">${dia}</div>`;
+                    celda.onclick = () => initializePuzzleView(dia);
+                    grid.appendChild(celda);
+                }
+            };
+
+            const initializePuzzleView = async (dia) => {
+                const tipoPersonal = document.getElementById('selectorPersonal').value;
+                showView('puzzle');
+                document.getElementById('titulo-dia').textContent = `Guardia del ${dia} de Marzo - ${tipoPersonal}s`;
+                
+                const tablaBody = document.getElementById('tabla-ubicaciones');
+                const diaPool = document.getElementById('personal-dia-pool');
+                const nochePool = document.getElementById('personal-noche-pool');
+                tablaBody.innerHTML = '<tr><td colspan="3">Cargando datos...</td></tr>';
+                diaPool.innerHTML = '';
+                nochePool.innerHTML = '';
+
+                const fecha = `2026-03-${String(dia).padStart(2, '0')}`;
+                const { data: ubicaciones } = await supabase.from('ubicaciones').select('id, nombre_ubicacion').eq('tipo_personal', tipoPersonal).order('id');
+                const { data: horarios } = await supabase.from('horarios').select('id, ubicacion_id, personal(nombre_completo), codigos_turno(tipo_turno)').eq('fecha', fecha).eq('personal.tipo_personal', tipoPersonal);
+
+                tablaBody.innerHTML = '';
+                ubicaciones.forEach(ubi => {
+                    tablaBody.innerHTML += `<tr><td class="ubicacion-col">${ubi.nombre_ubicacion}</td><td><div class="drop-zone" data-turno="Día" data-ubicacion-id="${ubi.id}"></div></td><td><div class="drop-zone" data-turno="Noche" data-ubicacion-id="${ubi.id}"></div></td></tr>`;
+                });
+
+                horarios.forEach(h => {
+                    const ficha = document.createElement('div');
+                    ficha.className = 'ficha-personal';
+                    ficha.textContent = h.personal.nombre_completo.split(',')[0];
+                    ficha.dataset.horarioId = h.id;
+                    const turno = h.codigos_turno.tipo_turno;
+                    let targetZone;
+                    if (h.ubicacion_id) {
+                        targetZone = document.querySelector(`.drop-zone[data-turno="${turno}"][data-ubicacion-id="${h.ubicacion_id}"]`);
+                    }
+                    if (!targetZone) {
+                        targetZone = (turno === 'Día' || turno === 'Mañana' || turno === 'Tarde') ? diaPool : nochePool;
+                    }
+                    targetZone.appendChild(ficha);
+                });
+
+                document.querySelectorAll('.drop-zone').forEach(el => new Sortable(el, { group: 'personal', animation: 150 }));
+            };
+
+            window.guardarCambios = async () => {
+                const updates = [];
+                document.querySelectorAll('.drop-zone').forEach(zona => {
+                    const ubicacionId = zona.dataset.ubicacionId;
+                    zona.querySelectorAll('.ficha-personal').forEach((ficha, index) => {
+                        updates.push({ id: parseInt(ficha.dataset.horarioId), ubicacion_id: ubicacionId ? parseInt(ubicacionId) : null, orden_en_turno: index + 1 });
+                    });
+                });
+                
+                const { error } = await supabase.from('horarios').upsert(updates);
+                if (error) {
+                    alert("Error al guardar: " + error.message);
+                } else {
+                    alert("¡Cambios guardados con éxito!");
+                    showView('calendar');
+                }
+            };
+            
+            window.showView = showView; // Hacemos la función global para el botón "Volver"
+
+            // 4. PUNTO DE ENTRADA DE LA APLICACIÓN
             document.getElementById('login-button').addEventListener('click', login);
             document.getElementById('logout-button').addEventListener('click', logout);
 
