@@ -45,11 +45,10 @@
     <div id="login-view" class="page-container">
         <div class="login-container card">
             <h1>Horario HHU</h1>
-            <form id="login-form">
-                <div class="input-group"><label for="usuario">Usuario</label><input type="text" id="usuario" required></div>
-                <div class="input-group"><label for="password">Contraseña</label><input type="text" id="password" required></div>
-                <button type="submit">Ingresar</button><p id="error-message" class="error-message"></p>
-            </form>
+            <div class="input-group"><label for="usuario">Usuario</label><input type="text" id="usuario" required></div>
+            <div class="input-group"><label for="password">Contraseña</label><input type="text" id="password" required></div>
+            <button type="button" id="login-button">Ingresar</button>
+            <p id="error-message" class="error-message"></p>
         </div>
     </div>
 
@@ -94,7 +93,6 @@
 
     <script>
         // --- INICIO DEL SCRIPT ---
-        // 1. DEFINICIÓN DE ELEMENTOS Y CONFIGURACIÓN
         const supabaseUrl = 'https://rrubzwdrsuyjntoewmew.supabase.co';
         const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJydWJ6d2Ryc3V5am50b2VqbWV3Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzIxNDgxMzksImV4cCI6MjA4NzcyNDEzOX0.2skpmRdeb43Ck0IUAKyBcW5g3KAHPf7_st-QaAJ2K0E';
         const supabase = supabase.createClient(supabaseUrl, supabaseKey );
@@ -105,7 +103,6 @@
             puzzle: document.getElementById('puzzle-view')
         };
 
-        // 2. LÓGICA DE NAVEGACIÓN Y SESIÓN (FUNCIONES)
         function showView(viewName) {
             for (const key in views) {
                 views[key].classList.toggle('hidden', key !== viewName);
@@ -133,7 +130,6 @@
             showView('login');
         }
 
-        // 3. LÓGICA DE LAS VISTAS (CALENDARIO Y PUZZLE)
         function renderCalendar() {
             const grid = document.querySelector('.calendario-grid');
             document.querySelectorAll('.dia-calendario, .dia-vacio').forEach(el => el.remove());
@@ -209,9 +205,9 @@
             }
         }
 
-        // 4. PUNTO DE ENTRADA DE LA APLICACIÓN
+        // PUNTO DE ENTRADA DE LA APLICACIÓN
         document.addEventListener('DOMContentLoaded', () => {
-            document.getElementById('login-form').addEventListener('submit', (e) => { e.preventDefault(); login(); });
+            document.getElementById('login-button').addEventListener('click', login);
             document.getElementById('logout-button').addEventListener('click', logout);
 
             if (localStorage.getItem('hhu_admin_logged_in') === 'true') {
