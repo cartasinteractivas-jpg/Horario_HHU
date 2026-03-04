@@ -7,10 +7,11 @@
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="https://cdn.jsdelivr.net/npm/sortablejs@latest/Sortable.min.js"></script>
     <style>
+        /* --- LOS ESTILOS (CSS ) SE MANTIENEN IGUALES, NO ES NECESARIO CAMBIARLOS --- */
         body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; background-color: #f0f2f5; color: #1c1c1e; margin: 0; }
         .hidden { display: none !important; }
         .page-container { padding: 1.5rem; }
-        .card { background: white; padding: 1.5rem; border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.1 ); }
+        .card { background: white; padding: 1.5rem; border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.1); }
         .header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem; flex-wrap: wrap; gap: 1rem; }
         .header h1 { margin: 0; font-size: 1.75rem; }
         .nav-button { background-color: #007aff; color: white; padding: 0.6rem 1.2rem; border: none; border-radius: 6px; cursor: pointer; text-decoration: none; font-weight: 500; }
@@ -95,7 +96,9 @@
     </div>
 
     <script>
-        // --- CONFIGURACIÓN Y ELEMENTOS GLOBALES ---
+        // --- INICIO DEL SCRIPT CORREGIDO ---
+
+        // 1. DEFINICIÓN DE ELEMENTOS Y CONFIGURACIÓN
         const supabaseUrl = 'https://rrubzwdrsuyjntoewmew.supabase.co';
         const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJydWJ6d2Ryc3V5am50b2VqbWV3Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzIxNDgxMzksImV4cCI6MjA4NzcyNDEzOX0.2skpmRdeb43Ck0IUAKyBcW5g3KAHPf7_st-QaAJ2K0E';
         const supabase = supabase.createClient(supabaseUrl, supabaseKey );
@@ -106,46 +109,35 @@
             puzzle: document.getElementById('puzzle-view')
         };
 
-        // --- LÓGICA DE NAVEGACIÓN Y SESIÓN ---
+        // 2. LÓGICA DE NAVEGACIÓN Y SESIÓN (FUNCIONES)
         function showView(viewName) {
             for (const key in views) {
                 views[key].classList.toggle('hidden', key !== viewName);
             }
         }
 
-        function checkLogin() {
-            if (localStorage.getItem('hhu_admin_logged_in') === 'true') {
-                const savedUsername = localStorage.getItem('hhu_admin_username');
-                if (savedUsername) document.getElementById('usuario').value = savedUsername;
-                showView('calendar');
-                renderCalendar();
-            } else {
-                showView('login');
-            }
-        }
-
-        document.getElementById('login-form').addEventListener('submit', (e) => {
-            e.preventDefault();
+        function login() {
             const user = document.getElementById('usuario').value;
             const pass = document.getElementById('password').value;
             if (user === 'admin' && pass === 'admin123') {
                 localStorage.setItem('hhu_admin_logged_in', 'true');
                 localStorage.setItem('hhu_admin_username', user);
-                checkLogin();
+                showView('calendar');
+                renderCalendar();
             } else {
                 const errorMsg = document.getElementById('error-message');
                 errorMsg.textContent = 'Usuario o contraseña incorrectos.';
                 errorMsg.style.display = 'block';
             }
-        });
+        }
 
-        document.getElementById('logout-button').addEventListener('click', () => {
+        function logout() {
             localStorage.removeItem('hhu_admin_logged_in');
-            document.getElementById('password').value = ''; // Limpiar clave al salir
-            checkLogin();
-        });
+            document.getElementById('password').value = '';
+            showView('login');
+        }
 
-        // --- LÓGICA DEL CALENDARIO ---
+        // 3. LÓGICA DE LAS VISTAS (CALENDARIO Y PUZZLE)
         function renderCalendar() {
             const grid = document.querySelector('.calendario-grid');
             document.querySelectorAll('.dia-calendario, .dia-vacio').forEach(el => el.remove());
@@ -163,7 +155,6 @@
             }
         }
 
-        // --- LÓGICA DEL PUZZLE DE MODIFICACIÓN ---
         async function initializePuzzleView(dia) {
             const tipoPersonal = document.getElementById('selectorPersonal').value;
             showView('puzzle');
@@ -222,8 +213,22 @@
             }
         }
 
-        // --- INICIALIZACIÓN DE LA APLICACIÓN ---
-        document.addEventListener('DOMContentLoaded', checkLogin);
+        // 4. PUNTO DE ENTRADA DE LA APLICACIÓN
+        document.addEventListener('DOMContentLoaded', () => {
+            // Asignar eventos a los botones
+            document.getElementById('login-form').addEventListener('submit', (e) => { e.preventDefault(); login(); });
+            document.getElementById('logout-button').addEventListener('click', logout);
+
+            // Comprobar el estado de la sesión al cargar la página
+            if (localStorage.getItem('hhu_admin_logged_in') === 'true') {
+                const savedUsername = localStorage.getItem('hhu_admin_username');
+                if (savedUsername) document.getElementById('usuario').value = savedUsername;
+                showView('calendar');
+                renderCalendar();
+            } else {
+                showView('login');
+            }
+        });
     </script>
 </body>
 </html>
