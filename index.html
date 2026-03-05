@@ -97,7 +97,9 @@
             // 1. DEFINICIÓN DE ELEMENTOS Y CONFIGURACIÓN
             const supabaseUrl = 'https://rrubzwdrsuyjntoewmew.supabase.co';
             const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJydWJ6d2Ryc3V5am50b2VqbWV3Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzIxNDgxMzksImV4cCI6MjA4NzcyNDEzOX0.2skpmRdeb43Ck0IUAKyBcW5g3KAHPf7_st-QaAJ2K0E';
-            const supabase = supabase.createClient(supabaseUrl, supabaseKey );
+           // LÍNEA 100 (CORREGIDA)
+const supabase = window.supabase.createClient(supabaseUrl, supabaseKey);
+
 
             const views = {
                 login: document.getElementById('login-view'),
@@ -227,3 +229,4 @@
     </script>
 </body>
 </html>
+
