@@ -85,8 +85,8 @@
                 </table>
             </div>
             <div class="personal-container card">
-                <h2>Personal de Turno (Día)</h2><div id="personal-dia-pool" class="drop-zone"></div>
-                <h2 style="margin-top: 2rem;">Personal de Turno (Noche)</h2><div id="personal-noche-pool" class="drop-zone"></div>
+                <h2>Personal de Turno (Día) - Sin Asignar</h2><div id="personal-dia-pool" class="drop-zone"></div>
+                <h2 style="margin-top: 2rem;">Personal de Turno (Noche) - Sin Asignar</h2><div id="personal-noche-pool" class="drop-zone"></div>
             </div>
         </div>
     </div>
@@ -97,9 +97,7 @@
             // 1. DEFINICIÓN DE ELEMENTOS Y CONFIGURACIÓN
             const supabaseUrl = 'https://rrubzwdrsuyjntoewmew.supabase.co';
             const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJydWJ6d2Ryc3V5am50b2VqbWV3Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzIxNDgxMzksImV4cCI6MjA4NzcyNDEzOX0.2skpmRdeb43Ck0IUAKyBcW5g3KAHPf7_st-QaAJ2K0E';
-           // LÍNEA 100 (CORREGIDA)
-const supabase = window.supabase.createClient(supabaseUrl, supabaseKey);
-
+            const supabase = window.supabase.createClient(supabaseUrl, supabaseKey );
 
             const views = {
                 login: document.getElementById('login-view'),
@@ -153,6 +151,7 @@ const supabase = window.supabase.createClient(supabaseUrl, supabaseKey);
                 }
             };
 
+            // --- FUNCIÓN initializePuzzleView REESCRITA Y CORREGIDA ---
             const initializePuzzleView = async (dia) => {
                 const tipoPersonal = document.getElementById('selectorPersonal').value;
                 showView('puzzle');
@@ -166,30 +165,52 @@ const supabase = window.supabase.createClient(supabaseUrl, supabaseKey);
                 nochePool.innerHTML = '';
 
                 const fecha = `2026-03-${String(dia).padStart(2, '0')}`;
-                const { data: ubicaciones } = await supabase.from('ubicaciones').select('id, nombre_ubicacion').eq('tipo_personal', tipoPersonal).order('id');
-                const { data: horarios } = await supabase.from('horarios').select('id, ubicacion_id, personal(nombre_completo), codigos_turno(tipo_turno)').eq('fecha', fecha).eq('personal.tipo_personal', tipoPersonal);
 
+                // 1. Obtener las ubicaciones para este tipo de personal
+                const { data: ubicaciones, error: ubiError } = await supabase.from('ubicaciones').select('id, nombre_ubicacion').eq('tipo_personal', tipoPersonal).order('id');
+                if (ubiError) { console.error('Error fetching ubicaciones:', ubiError); return; }
+
+                // 2. Obtener los IDs del personal que coincide con el tipo seleccionado
+                const { data: personalIds, error: persError } = await supabase.from('personal').select('id').eq('tipo_personal', tipoPersonal);
+                if (persError) { console.error('Error fetching personal IDs:', persError); return; }
+                const ids = personalIds.map(p => p.id);
+
+                // 3. Obtener los horarios para esa fecha Y que pertenezcan al personal de ese tipo
+                const { data: horarios, error: horError } = await supabase.from('horarios')
+                    .select('id, ubicacion_id, personal(nombre_completo), codigo_turno_id')
+                    .eq('fecha', fecha)
+                    .in('personal_id', ids);
+                if (horError) { console.error('Error fetching horarios:', horError); return; }
+
+                // 4. Rellenar la tabla de ubicaciones
                 tablaBody.innerHTML = '';
                 ubicaciones.forEach(ubi => {
                     tablaBody.innerHTML += `<tr><td class="ubicacion-col">${ubi.nombre_ubicacion}</td><td><div class="drop-zone" data-turno="Día" data-ubicacion-id="${ubi.id}"></div></td><td><div class="drop-zone" data-turno="Noche" data-ubicacion-id="${ubi.id}"></div></td></tr>`;
                 });
 
+                // 5. Colocar las fichas del personal
+                const turnosDia = ['D3', 'M3', 'R3', 'T5'];
                 horarios.forEach(h => {
                     const ficha = document.createElement('div');
                     ficha.className = 'ficha-personal';
                     ficha.textContent = h.personal.nombre_completo.split(',')[0];
                     ficha.dataset.horarioId = h.id;
-                    const turno = h.codigos_turno.tipo_turno;
+                    
+                    const esTurnoDia = turnosDia.includes(h.codigo_turno_id);
+                    const turnoGrupo = esTurnoDia ? 'Día' : 'Noche';
+
                     let targetZone;
                     if (h.ubicacion_id) {
-                        targetZone = document.querySelector(`.drop-zone[data-turno="${turno}"][data-ubicacion-id="${h.ubicacion_id}"]`);
+                        targetZone = document.querySelector(`.drop-zone[data-turno="${turnoGrupo}"][data-ubicacion-id="${h.ubicacion_id}"]`);
                     }
+                    
                     if (!targetZone) {
-                        targetZone = (turno === 'Día' || turno === 'Mañana' || turno === 'Tarde') ? diaPool : nochePool;
+                        targetZone = esTurnoDia ? diaPool : nochePool;
                     }
                     targetZone.appendChild(ficha);
                 });
 
+                // 6. Activar el drag-and-drop
                 document.querySelectorAll('.drop-zone').forEach(el => new Sortable(el, { group: 'personal', animation: 150 }));
             };
 
@@ -211,7 +232,7 @@ const supabase = window.supabase.createClient(supabaseUrl, supabaseKey);
                 }
             };
             
-            window.showView = showView; // Hacemos la función global para el botón "Volver"
+            window.showView = showView;
 
             // 4. PUNTO DE ENTRADA DE LA APLICACIÓN
             document.getElementById('login-button').addEventListener('click', login);
@@ -229,4 +250,3 @@ const supabase = window.supabase.createClient(supabaseUrl, supabaseKey);
     </script>
 </body>
 </html>
-
