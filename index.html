@@ -99,7 +99,8 @@
         // --- INICIO DEL SCRIPT ---
         document.addEventListener('DOMContentLoaded', () => {
             // 1. DEFINICIÓN DE ELEMENTOS Y CONFIGURACIÓN
-            const supabaseUrl = 'https://rrubzwdrsuyjntoewmew.supabase.co';
+            // --- CREDENCIALES DEFINITIVAS Y VERIFICADAS ---
+            const supabaseUrl = 'https://rrubzwdrsuyjntoejmew.supabase.co';
             const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJydWJ6d2Ryc3V5am50b2VqbWV3Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzIxNDgxMzksImV4cCI6MjA4NzcyNDEzOX0.2skpmRdeb43Ck0IUAKyBcW5g3KAHPf7_st-QaAJ2K0E';
             const supabase = window.supabase.createClient(supabaseUrl, supabaseKey );
 
@@ -119,7 +120,6 @@
 
             const checkSupabaseConnection = async () => {
                 try {
-                    // Hacemos una petición simple para probar la conexión
                     const { error } = await supabase.from('personal').select('id').limit(1);
                     if (error) throw error;
                     statusIndicator.textContent = 'Conectado';
@@ -144,7 +144,7 @@
                         showView('calendar');
                         renderCalendar();
                     } else {
-                        alert("Login correcto, pero no se pudo conectar con la base de datos. Revisa la configuración de CORS en Supabase o la consola del navegador (F12) para más detalles.");
+                        alert("Login correcto, pero no se pudo conectar con la base de datos. Asegúrate de haber configurado CORS en Supabase (Settings -> API -> CORS Origins).");
                     }
                 } else {
                     const errorMsg = document.getElementById('error-message');
@@ -268,7 +268,7 @@
                         showView('calendar');
                         renderCalendar();
                     } else {
-                        logout(); // Si no hay conexión, forzamos el logout
+                        logout();
                     }
                 } else {
                     showView('login');
