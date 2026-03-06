@@ -99,14 +99,10 @@
         // --- INICIO DEL SCRIPT ---
         document.addEventListener('DOMContentLoaded', () => {
             // 1. DEFINICIÓN DE ELEMENTOS Y CONFIGURACIÓN
-            const supabaseUrl = 'https://rrubzwdrsuyjntoewmew.supabase.co';
+            // --- CREDENCIALES DEFINITIVAS Y VERIFICADAS ---
+            const supabaseUrl = 'https://rrubzwdrsuyjntoejmew.supabase.co';
             const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJydWJ6d2Ryc3V5am50b2VqbWV3Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzIxNDgxMzksImV4cCI6MjA4NzcyNDEzOX0.2skpmRdeb43Ck0IUAKyBcW5g3KAHPf7_st-QaAJ2K0E';
             const supabase = window.supabase.createClient(supabaseUrl, supabaseKey );
-
-            const ubicacionesFijas = {
-                Enfermero: ["JEFATURA", "LIDER", "UCIM", "UCIM", "LADO I", "LADO II", "LADO III", "LADO IV", "LADO V", "LADO VI", "CP", "SM"],
-                Técnico: ["MUESTRA", "UCIM", "UCIM", "LADO I", "LADO I", "LADO II", "LADO II", "LADO III", "LADO III", "LADO IV", "LADO IV", "S. MENTAL", "SALIDA", "SALIDA"]
-            };
 
             const views = {
                 login: document.getElementById('login-view'),
@@ -124,7 +120,6 @@
 
             const checkSupabaseConnection = async () => {
                 try {
-                    // --- LÍNEA RESTAURADA A SU VERSIÓN CORRECTA ---
                     const { error } = await supabase.from('personal').select('id').limit(1);
                     if (error) throw error;
                     statusIndicator.textContent = 'Conectado';
@@ -149,7 +144,7 @@
                         showView('calendar');
                         renderCalendar();
                     } else {
-                        alert("Login correcto, pero no se pudo conectar con la base de datos. Revisa la configuración de CORS en Supabase o la consola del navegador (F12).");
+                        alert("Login correcto, pero no se pudo conectar con la base de datos. Asegúrate de haber configurado CORS en Supabase (Settings -> API -> CORS Origins).");
                     }
                 } else {
                     const errorMsg = document.getElementById('error-message');
@@ -197,19 +192,20 @@
                 const fecha = `2026-03-${String(dia).padStart(2, '0')}`;
 
                 try {
-                    const ubicaciones = ubicacionesFijas[tipoPersonalSeleccionado];
-                    
-                    const { data: horarios, error: horError } = await supabase.from('horarios').select('id, ubicacion, codigo_turno_id, personal(id, nombre_completo, tipo_personal)').eq('fecha', fecha);
+                    const { data: ubicaciones, error: ubiError } = await supabase.from('ubicaciones').select('id, nombre_ubicacion').eq('tipo_personal', tipoPersonalSeleccionado).order('id');
+                    if (ubiError) throw ubiError;
+
+                    const { data: horarios, error: horError } = await supabase.from('horarios').select('id, ubicacion_id, codigo_turno_id, personal(id, nombre_completo, tipo_personal)').eq('fecha', fecha);
                     if (horError) throw horError;
 
                     const horariosFiltrados = horarios.filter(h => h.personal && h.personal.tipo_personal === tipoPersonalSeleccionado);
 
                     tablaBody.innerHTML = '';
-                    if (!ubicaciones || ubicaciones.length === 0) {
+                    if (ubicaciones.length === 0) {
                         tablaBody.innerHTML = '<tr><td colspan="3">No se encontraron ubicaciones para este tipo de personal.</td></tr>';
                     } else {
                         ubicaciones.forEach(ubi => {
-                            tablaBody.innerHTML += `<tr><td class="ubicacion-col">${ubi}</td><td><div class="drop-zone" data-turno="Día" data-ubicacion="${ubi}"></div></td><td><div class="drop-zone" data-turno="Noche" data-ubicacion="${ubi}"></div></td></tr>`;
+                            tablaBody.innerHTML += `<tr><td class="ubicacion-col">${ubi.nombre_ubicacion}</td><td><div class="drop-zone" data-turno="Día" data-ubicacion-id="${ubi.id}"></div></td><td><div class="drop-zone" data-turno="Noche" data-ubicacion-id="${ubi.id}"></div></td></tr>`;
                         });
                     }
 
@@ -224,8 +220,8 @@
                         const turnoGrupo = esTurnoDia ? 'Día' : 'Noche';
 
                         let targetZone;
-                        if (h.ubicacion) {
-                            targetZone = document.querySelector(`.drop-zone[data-turno="${turnoGrupo}"][data-ubicacion="${h.ubicacion}"]`);
+                        if (h.ubicacion_id) {
+                            targetZone = document.querySelector(`.drop-zone[data-turno="${turnoGrupo}"][data-ubicacion-id="${h.ubicacion_id}"]`);
                         }
                         
                         if (!targetZone) {
@@ -245,9 +241,9 @@
             window.guardarCambios = async () => {
                 const updates = [];
                 document.querySelectorAll('.drop-zone').forEach(zona => {
-                    const ubicacion = zona.dataset.ubicacion;
+                    const ubicacionId = zona.dataset.ubicacionId;
                     zona.querySelectorAll('.ficha-personal').forEach((ficha, index) => {
-                        updates.push({ id: parseInt(ficha.dataset.horarioId), ubicacion: ubicacion ? ubicacion : null, orden_en_turno: index + 1 });
+                        updates.push({ id: parseInt(ficha.dataset.horarioId), ubicacion_id: ubicacionId ? parseInt(ubicacionId) : null, orden_en_turno: index + 1 });
                     });
                 });
                 
