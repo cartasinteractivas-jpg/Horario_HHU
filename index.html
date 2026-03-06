@@ -154,7 +154,7 @@
                 showView('login');
             };
 
-            // 3. LÓGICA DE LAS VISTAS (CON LA NUEVA LÓGICA INTELIGENTE)
+            // 3. LÓGICA DE LAS VISTAS (SIN CAMBIOS)
             const renderCalendar = () => {
                 const grid = document.querySelector('.calendario-grid');
                 document.querySelectorAll('.dia-calendario, .dia-vacio').forEach(el => el.remove());
@@ -201,39 +201,23 @@
                         .eq('fecha', fecha);
                     if (error) throw error;
 
-                    const horariosFiltrados = horarios.filter(h => h.personal && h.personal.tipo_personal === tipoPersonalSeleccionado);
                     const turnosDia = ['D3', 'M3', 'R3', 'T5'];
 
-                    // --- INICIO DE LA NUEVA LÓGICA INTELIGENTE ---
-                    
-                    // 1. Primero, coloca a los que YA tienen una ubicación guardada
-                    horariosFiltrados.forEach(h => {
-                        if (h.observacion) { // Si tiene una ubicación guardada en 'observacion'
-                            const esTurnoDia = turnosDia.includes(h.codigo_turno_id);
-                            const turnoGrupo = esTurnoDia ? 'Día' : 'Noche';
-                            const targetZone = document.querySelector(`.drop-zone[data-turno="${turnoGrupo}"][data-ubicacion-nombre="${h.observacion}"]`);
-                            if (targetZone) {
-                                const ficha = document.createElement('div');
-                                ficha.className = 'ficha-personal';
-                                ficha.textContent = h.personal.nombre_completo.split(',')[0];
-                                ficha.dataset.horarioId = h.id;
-                                targetZone.appendChild(ficha);
-                                h.colocado = true; // Marcar como ya colocado
-                            }
-                        }
-                    });
-
-                    // 2. Ahora, itera sobre los que quedan y asígnalos a la primera ubicación vacía
-                    horariosFiltrados.forEach(h => {
-                        if (!h.colocado) { // Solo procesar los que no fueron colocados en el paso 1
+                    horarios.forEach(h => {
+                        if (h.personal) {
                             const esTurnoDia = turnosDia.includes(h.codigo_turno_id);
                             const turnoGrupo = esTurnoDia ? 'Día' : 'Noche';
                             
-                            // Buscar la primera zona de ese turno que esté vacía
-                            const zonasDisponibles = document.querySelectorAll(`.drop-zone[data-turno="${turnoGrupo}"][data-ubicacion-nombre]`);
-                            let targetZone = Array.from(zonasDisponibles).find(zona => zona.childElementCount === 0);
+                            let targetZone;
+                            if (h.observacion) {
+                                targetZone = document.querySelector(`.drop-zone[data-turno="${turnoGrupo}"][data-ubicacion-nombre="${h.observacion}"]`);
+                            }
+                            
+                            if (!targetZone) {
+                                const zonasDisponibles = document.querySelectorAll(`.drop-zone[data-turno="${turnoGrupo}"][data-ubicacion-nombre]`);
+                                targetZone = Array.from(zonasDisponibles).find(zona => zona.childElementCount === 0);
+                            }
 
-                            // Si no hay ninguna zona vacía, va al pool de "Sin Asignar"
                             if (!targetZone) {
                                 targetZone = esTurnoDia ? diaPool : nochePool;
                             }
@@ -246,8 +230,6 @@
                         }
                     });
                     
-                    // --- FIN DE LA NUEVA LÓGICA INTELIGENTE ---
-
                     document.querySelectorAll('.drop-zone').forEach(el => new Sortable(el, { group: 'personal', animation: 150 }));
 
                 } catch (error) {
@@ -256,25 +238,36 @@
                 }
             };
 
+            // --- FUNCIÓN guardarCambios() CORREGIDA ---
             window.guardarCambios = async () => {
                 const updates = [];
-                document.querySelectorAll('.drop-zone').forEach(zona => {
-                    const ubicacionNombre = zona.dataset.ubicacionNombre;
-                    zona.querySelectorAll('.ficha-personal').forEach(ficha => {
-                        updates.push({ 
-                            id: parseInt(ficha.dataset.horarioId), 
-                            observacion: ubicacionNombre || null
-                        });
+                document.querySelectorAll('.ficha-personal').forEach(ficha => {
+                    const horarioId = parseInt(ficha.dataset.horarioId);
+                    const zona = ficha.closest('.drop-zone');
+                    const ubicacionNombre = zona.dataset.ubicacionNombre || null;
+                    
+                    updates.push({
+                        id: horarioId,
+                        observacion: ubicacionNombre
                     });
                 });
-                
-                const { error } = await supabase.from('horarios').upsert(updates);
-                if (error) {
-                    alert("Error al guardar: " + error.message);
-                } else {
-                    alert("¡Cambios guardados con éxito!");
-                    showView('calendar');
+
+                // Usamos un bucle para enviar las actualizaciones una por una.
+                // Es menos eficiente que .upsert(), pero mucho más seguro y claro.
+                for (const update of updates) {
+                    const { error } = await supabase
+                        .from('horarios')
+                        .update({ observacion: update.observacion }) // Solo actualizamos la columna 'observacion'
+                        .eq('id', update.id); // Donde el 'id' coincida
+
+                    if (error) {
+                        alert(`Error al guardar el cambio para el horario ID ${update.id}: ${error.message}`);
+                        return; // Detenemos el proceso si hay un error
+                    }
                 }
+
+                alert("¡Cambios guardados con éxito!");
+                showView('calendar');
             };
             
             window.showView = showView;
