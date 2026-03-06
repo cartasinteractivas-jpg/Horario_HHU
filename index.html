@@ -103,7 +103,6 @@
             const views = { login: document.getElementById('login-view'), calendar: document.getElementById('calendar-view'), puzzle: document.getElementById('puzzle-view') };
             const statusIndicator = document.getElementById('status-indicator');
 
-            // --- LISTAS DE UBICACIONES FIJAS ---
             const ubicacionesFijas = {
                 Enfermero: ["JEFATURA", "LIDER", "UCIM", "UCIM", "LADO I", "LADO II", "LADO III", "LADO IV", "LADO V", "LADO VI", "CP", "SM"],
                 Técnico: ["MUESTRA", "UCIM", "UCIM", "LADO I", "LADO I", "LADO II", "LADO II", "LADO III", "LADO III", "LADO IV", "LADO IV", "S. MENTAL", "SALIDA", "SALIDA"]
@@ -188,25 +187,21 @@
                 const fecha = `2026-03-${String(dia).padStart(2, '0')}`;
 
                 try {
-                    // PASO 1: Obtener la lista de ubicaciones correcta (del código, no de la BD)
                     const listaUbicaciones = ubicacionesFijas[tipoPersonalSeleccionado];
                     if (!listaUbicaciones) throw new Error(`No se encontró lista de ubicaciones para ${tipoPersonalSeleccionado}`);
 
-                    // PASO 2: Dibujar la tabla con las ubicaciones fijas
                     tablaBody.innerHTML = '';
                     listaUbicaciones.forEach((nombreUbicacion, index) => {
-                        const ubicacionId = `${tipoPersonalSeleccionado}-${index}`; // ID único para la ubicación
                         tablaBody.innerHTML += `<tr><td class="ubicacion-col">${nombreUbicacion}</td><td><div class="drop-zone" data-turno="Día" data-ubicacion-nombre="${nombreUbicacion}"></div></td><td><div class="drop-zone" data-turno="Noche" data-ubicacion-nombre="${nombreUbicacion}"></div></td></tr>`;
                     });
 
-                    // PASO 3: Obtener solo los horarios de la BD
+                    // --- LÍNEA CORREGIDA ---
                     const { data: horarios, error } = await supabase
                         .from('horarios')
-                        .select('id, ubicacion, codigo_turno_id, personal(id, nombre_completo, tipo_personal)')
+                        .select('id, observacion, codigo_turno_id, personal(id, nombre_completo, tipo_personal)') // <-- ¡AQUÍ ESTÁ EL CAMBIO!
                         .eq('fecha', fecha);
                     if (error) throw error;
 
-                    // PASO 4: Filtrar y colocar las fichas
                     const horariosFiltrados = horarios.filter(h => h.personal && h.personal.tipo_personal === tipoPersonalSeleccionado);
                     const turnosDia = ['D3', 'M3', 'R3', 'T5'];
 
@@ -220,19 +215,16 @@
                         const turnoGrupo = esTurnoDia ? 'Día' : 'Noche';
 
                         let targetZone;
-                        // Intenta colocar la ficha en su ubicación guardada
-                        if (h.ubicacion) {
-                            targetZone = document.querySelector(`.drop-zone[data-turno="${turnoGrupo}"][data-ubicacion-nombre="${h.ubicacion}"]`);
+                        if (h.observacion) { // Usamos 'observacion' para buscar la zona
+                            targetZone = document.querySelector(`.drop-zone[data-turno="${turnoGrupo}"][data-ubicacion-nombre="${h.observacion}"]`);
                         }
                         
-                        // Si no tiene ubicación guardada o no se encontró la zona, va al pool de "Sin Asignar"
                         if (!targetZone) {
                             targetZone = esTurnoDia ? diaPool : nochePool;
                         }
                         targetZone.appendChild(ficha);
                     });
 
-                    // PASO 5: Hacer todas las zonas arrastrables
                     document.querySelectorAll('.drop-zone').forEach(el => new Sortable(el, { group: 'personal', animation: 150 }));
 
                 } catch (error) {
@@ -244,11 +236,11 @@
             window.guardarCambios = async () => {
                 const updates = [];
                 document.querySelectorAll('.drop-zone').forEach(zona => {
-                    const ubicacionNombre = zona.dataset.ubicacionNombre; // Usamos el nombre de la ubicación
+                    const ubicacionNombre = zona.dataset.ubicacionNombre;
                     zona.querySelectorAll('.ficha-personal').forEach(ficha => {
                         updates.push({ 
                             id: parseInt(ficha.dataset.horarioId), 
-                            ubicacion: ubicacionNombre || null // Guardamos el nombre o null si está en el pool
+                            observacion: ubicacionNombre || null // Guardamos en 'observacion'
                         });
                     });
                 });
