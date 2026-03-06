@@ -103,7 +103,6 @@
             const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJydWJ6d2Ryc3V5am50b2VqbWV3Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzIxNDgxMzksImV4cCI6MjA4NzcyNDEzOX0.2skpmRdeb43Ck0IUAKyBcW5g3KAHPf7_st-QaAJ2K0E';
             const supabase = window.supabase.createClient(supabaseUrl, supabaseKey );
 
-            // --- LISTAS DE UBICACIONES FIJAS ---
             const ubicacionesFijas = {
                 Enfermero: ["JEFATURA", "LIDER", "UCIM", "UCIM", "LADO I", "LADO II", "LADO III", "LADO IV", "LADO V", "LADO VI", "CP", "SM"],
                 Técnico: ["MUESTRA", "UCIM", "UCIM", "LADO I", "LADO I", "LADO II", "LADO II", "LADO III", "LADO III", "LADO IV", "LADO IV", "S. MENTAL", "SALIDA", "SALIDA"]
@@ -125,6 +124,7 @@
 
             const checkSupabaseConnection = async () => {
                 try {
+                    // --- LÍNEA RESTAURADA A SU VERSIÓN CORRECTA ---
                     const { error } = await supabase.from('personal').select('id').limit(1);
                     if (error) throw error;
                     statusIndicator.textContent = 'Conectado';
@@ -197,16 +197,13 @@
                 const fecha = `2026-03-${String(dia).padStart(2, '0')}`;
 
                 try {
-                    // 1. Obtener la lista de ubicaciones del objeto, no de la BD
                     const ubicaciones = ubicacionesFijas[tipoPersonalSeleccionado];
                     
-                    // 2. Obtener los horarios de la BD
                     const { data: horarios, error: horError } = await supabase.from('horarios').select('id, ubicacion, codigo_turno_id, personal(id, nombre_completo, tipo_personal)').eq('fecha', fecha);
                     if (horError) throw horError;
 
                     const horariosFiltrados = horarios.filter(h => h.personal && h.personal.tipo_personal === tipoPersonalSeleccionado);
 
-                    // 3. Rellenar la tabla de ubicaciones
                     tablaBody.innerHTML = '';
                     if (!ubicaciones || ubicaciones.length === 0) {
                         tablaBody.innerHTML = '<tr><td colspan="3">No se encontraron ubicaciones para este tipo de personal.</td></tr>';
@@ -216,7 +213,6 @@
                         });
                     }
 
-                    // 4. Colocar las fichas del personal
                     const turnosDia = ['D3', 'M3', 'R3', 'T5'];
                     horariosFiltrados.forEach(h => {
                         const ficha = document.createElement('div');
@@ -228,7 +224,7 @@
                         const turnoGrupo = esTurnoDia ? 'Día' : 'Noche';
 
                         let targetZone;
-                        if (h.ubicacion) { // Usamos el campo de texto 'ubicacion'
+                        if (h.ubicacion) {
                             targetZone = document.querySelector(`.drop-zone[data-turno="${turnoGrupo}"][data-ubicacion="${h.ubicacion}"]`);
                         }
                         
@@ -238,7 +234,6 @@
                         targetZone.appendChild(ficha);
                     });
 
-                    // 5. Activar el drag-and-drop
                     document.querySelectorAll('.drop-zone').forEach(el => new Sortable(el, { group: 'personal', animation: 150 }));
 
                 } catch (error) {
@@ -250,7 +245,7 @@
             window.guardarCambios = async () => {
                 const updates = [];
                 document.querySelectorAll('.drop-zone').forEach(zona => {
-                    const ubicacion = zona.dataset.ubicacion; // Ahora es un texto
+                    const ubicacion = zona.dataset.ubicacion;
                     zona.querySelectorAll('.ficha-personal').forEach((ficha, index) => {
                         updates.push({ id: parseInt(ficha.dataset.horarioId), ubicacion: ubicacion ? ubicacion : null, orden_en_turno: index + 1 });
                     });
