@@ -137,7 +137,7 @@
             const renderCalendar = () => {
                 const grid = document.querySelector('.calendario-grid');
                 document.querySelectorAll('.dia-calendario, .dia-vacio').forEach(el => el.remove());
-                const mes = 2, ano = 2026;
+                const mes = 2, ano = 2026; // Marzo 2026
                 const primerDia = new Date(ano, mes, 1).getDay();
                 const offset = (primerDia === 0) ? 6 : primerDia - 1;
                 for (let i = 0; i < offset; i++) { grid.appendChild(document.createElement('div')).classList.add('dia-vacio'); }
@@ -151,10 +151,11 @@
                 }
             };
 
+            // --- FUNCIÓN initializePuzzleView REESCRITA Y CORREGIDA ---
             const initializePuzzleView = async (dia) => {
-                const tipoPersonal = document.getElementById('selectorPersonal').value;
+                const tipoPersonalSeleccionado = document.getElementById('selectorPersonal').value;
                 showView('puzzle');
-                document.getElementById('titulo-dia').textContent = `Guardia del ${dia} de Marzo - ${tipoPersonal}s`;
+                document.getElementById('titulo-dia').textContent = `Guardia del ${dia} de Marzo - ${tipoPersonalSeleccionado}s`;
                 
                 const tablaBody = document.getElementById('tabla-ubicaciones');
                 const diaPool = document.getElementById('personal-dia-pool');
@@ -167,20 +168,17 @@
 
                 try {
                     // 1. Obtener las ubicaciones para este tipo de personal
-                    const { data: ubicaciones, error: ubiError } = await supabase.from('ubicaciones').select('id, nombre_ubicacion').eq('tipo_personal', tipoPersonal).order('id');
+                    const { data: ubicaciones, error: ubiError } = await supabase.from('ubicaciones').select('id, nombre_ubicacion').eq('tipo_personal', tipoPersonalSeleccionado).order('id');
                     if (ubiError) throw ubiError;
 
-                    // 2. Obtener los IDs del personal que coincide con el tipo seleccionado
-                    const { data: personalData, error: persError } = await supabase.from('personal').select('id').eq('tipo_personal', tipoPersonal);
-                    if (persError) throw persError;
-                    const ids = personalData.map(p => p.id);
-
-                    // 3. Obtener los horarios para esa fecha Y que pertenezcan al personal de ese tipo
+                    // 2. Obtener los horarios para esa fecha, pidiendo también el nombre y tipo del personal relacionado
                     const { data: horarios, error: horError } = await supabase.from('horarios')
-                        .select('id, ubicacion_id, personal!inner(nombre_completo, tipo_personal), codigo_turno_id')
-                        .eq('fecha', fecha)
-                        .in('personal_id', ids);
+                        .select('id, ubicacion_id, codigo_turno_id, personal(id, nombre_completo, tipo_personal)')
+                        .eq('fecha', fecha);
                     if (horError) throw horError;
+
+                    // 3. Filtrar los horarios en JavaScript para quedarnos solo con los del tipo de personal correcto
+                    const horariosFiltrados = horarios.filter(h => h.personal && h.personal.tipo_personal === tipoPersonalSeleccionado);
 
                     // 4. Rellenar la tabla de ubicaciones
                     tablaBody.innerHTML = '';
@@ -194,7 +192,7 @@
 
                     // 5. Colocar las fichas del personal
                     const turnosDia = ['D3', 'M3', 'R3', 'T5'];
-                    horarios.forEach(h => {
+                    horariosFiltrados.forEach(h => {
                         const ficha = document.createElement('div');
                         ficha.className = 'ficha-personal';
                         ficha.textContent = h.personal.nombre_completo.split(',')[0];
