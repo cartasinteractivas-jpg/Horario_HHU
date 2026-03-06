@@ -95,6 +95,7 @@
         // --- INICIO DEL SCRIPT ---
         document.addEventListener('DOMContentLoaded', () => {
             // 1. DEFINICIÓN DE ELEMENTOS Y CONFIGURACIÓN
+            // --- CREDENCIALES CORREGIDAS ---
             const supabaseUrl = 'https://rrubzwdrsuyjntoewmew.supabase.co';
             const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJydWJ6d2Ryc3V5am50b2VqbWV3Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzIxNDgxMzksImV4cCI6MjA4NzcyNDEzOX0.2skpmRdeb43Ck0IUAKyBcW5g3KAHPf7_st-QaAJ2K0E';
             const supabase = window.supabase.createClient(supabaseUrl, supabaseKey );
@@ -151,7 +152,6 @@
                 }
             };
 
-            // --- FUNCIÓN initializePuzzleView REESCRITA Y CORREGIDA ---
             const initializePuzzleView = async (dia) => {
                 const tipoPersonalSeleccionado = document.getElementById('selectorPersonal').value;
                 showView('puzzle');
@@ -217,7 +217,7 @@
 
                 } catch (error) {
                     console.error('Error al inicializar la vista del puzzle:', error);
-                    tablaBody.innerHTML = `<tr><td colspan="3">Error al cargar datos: ${error.message}. Revisa las políticas de seguridad (RLS) en Supabase.</td></tr>`;
+                    tablaBody.innerHTML = `<tr><td colspan="3">Error al cargar datos: ${error.message}.</td></tr>`;
                 }
             };
 
