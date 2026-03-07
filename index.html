@@ -95,7 +95,7 @@
     </div>
     <script>
         document.addEventListener('DOMContentLoaded', () => {
-            // 1. CONFIGURACIÓN (SIN CAMBIOS)
+            // 1. CONFIGURACIÓN
             const supabaseUrl = 'https://rrubzwdrsuyjntoejmew.supabase.co';
             const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJydWJ6d2Ryc3V5am50b2VqbWV3Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzIxNDgxMzksImV4cCI6MjA4NzcyNDEzOX0.2skpmRdeb43Ck0IUAKyBcW5g3KAHPf7_st-QaAJ2K0E';
             const supabase = window.supabase.createClient(supabaseUrl, supabaseKey );
@@ -108,7 +108,7 @@
                 Técnico: ["MUESTRA", "UCIM", "UCIM", "LADO I", "LADO I", "LADO II", "LADO II", "LADO III", "LADO III", "LADO IV", "LADO IV", "S. MENTAL", "SALIDA", "SALIDA"]
             };
 
-            // 2. LÓGICA DE NAVEGACIÓN Y SESIÓN (SIN CAMBIOS)
+            // 2. LÓGICA DE NAVEGACIÓN Y SESIÓN
             const showView = (viewName) => {
                 for (const key in views) views[key].classList.toggle('hidden', key !== viewName);
             };
@@ -154,7 +154,7 @@
                 showView('login');
             };
 
-            // 3. LÓGICA DE LAS VISTAS (SIN CAMBIOS)
+            // 3. LÓGICA DE LAS VISTAS
             const renderCalendar = () => {
                 const grid = document.querySelector('.calendario-grid');
                 document.querySelectorAll('.dia-calendario, .dia-vacio').forEach(el => el.remove());
@@ -191,45 +191,40 @@
                     if (!listaUbicaciones) throw new Error(`No se encontró lista de ubicaciones para ${tipoPersonalSeleccionado}`);
 
                     tablaBody.innerHTML = '';
-                    listaUbicaciones.forEach((nombreUbicacion) => {
+                    listaUbicaciones.forEach((nombreUbicacion, index) => {
                         tablaBody.innerHTML += `<tr><td class="ubicacion-col">${nombreUbicacion}</td><td><div class="drop-zone" data-turno="Día" data-ubicacion-nombre="${nombreUbicacion}"></div></td><td><div class="drop-zone" data-turno="Noche" data-ubicacion-nombre="${nombreUbicacion}"></div></td></tr>`;
                     });
 
+                    // --- LÍNEA CORREGIDA ---
                     const { data: horarios, error } = await supabase
                         .from('horarios')
-                        .select('id, observacion, codigo_turno_id, personal(id, nombre_completo, tipo_personal)')
+                        .select('id, observacion, codigo_turno_id, personal(id, nombre_completo, tipo_personal)') // <-- ¡AQUÍ ESTÁ EL CAMBIO!
                         .eq('fecha', fecha);
                     if (error) throw error;
 
+                    const horariosFiltrados = horarios.filter(h => h.personal && h.personal.tipo_personal === tipoPersonalSeleccionado);
                     const turnosDia = ['D3', 'M3', 'R3', 'T5'];
 
-                    horarios.forEach(h => {
-                        if (h.personal) {
-                            const esTurnoDia = turnosDia.includes(h.codigo_turno_id);
-                            const turnoGrupo = esTurnoDia ? 'Día' : 'Noche';
-                            
-                            let targetZone;
-                            if (h.observacion) {
-                                targetZone = document.querySelector(`.drop-zone[data-turno="${turnoGrupo}"][data-ubicacion-nombre="${h.observacion}"]`);
-                            }
-                            
-                            if (!targetZone) {
-                                const zonasDisponibles = document.querySelectorAll(`.drop-zone[data-turno="${turnoGrupo}"][data-ubicacion-nombre]`);
-                                targetZone = Array.from(zonasDisponibles).find(zona => zona.childElementCount === 0);
-                            }
+                    horariosFiltrados.forEach(h => {
+                        const ficha = document.createElement('div');
+                        ficha.className = 'ficha-personal';
+                        ficha.textContent = h.personal.nombre_completo.split(',')[0];
+                        ficha.dataset.horarioId = h.id;
+                        
+                        const esTurnoDia = turnosDia.includes(h.codigo_turno_id);
+                        const turnoGrupo = esTurnoDia ? 'Día' : 'Noche';
 
-                            if (!targetZone) {
-                                targetZone = esTurnoDia ? diaPool : nochePool;
-                            }
-
-                            const ficha = document.createElement('div');
-                            ficha.className = 'ficha-personal';
-                            ficha.textContent = h.personal.nombre_completo.split(',')[0];
-                            ficha.dataset.horarioId = h.id;
-                            targetZone.appendChild(ficha);
+                        let targetZone;
+                        if (h.observacion) { // Usamos 'observacion' para buscar la zona
+                            targetZone = document.querySelector(`.drop-zone[data-turno="${turnoGrupo}"][data-ubicacion-nombre="${h.observacion}"]`);
                         }
+                        
+                        if (!targetZone) {
+                            targetZone = esTurnoDia ? diaPool : nochePool;
+                        }
+                        targetZone.appendChild(ficha);
                     });
-                    
+
                     document.querySelectorAll('.drop-zone').forEach(el => new Sortable(el, { group: 'personal', animation: 150 }));
 
                 } catch (error) {
@@ -238,41 +233,30 @@
                 }
             };
 
-            // --- FUNCIÓN guardarCambios() CORREGIDA ---
             window.guardarCambios = async () => {
                 const updates = [];
-                document.querySelectorAll('.ficha-personal').forEach(ficha => {
-                    const horarioId = parseInt(ficha.dataset.horarioId);
-                    const zona = ficha.closest('.drop-zone');
-                    const ubicacionNombre = zona.dataset.ubicacionNombre || null;
-                    
-                    updates.push({
-                        id: horarioId,
-                        observacion: ubicacionNombre
+                document.querySelectorAll('.drop-zone').forEach(zona => {
+                    const ubicacionNombre = zona.dataset.ubicacionNombre;
+                    zona.querySelectorAll('.ficha-personal').forEach(ficha => {
+                        updates.push({ 
+                            id: parseInt(ficha.dataset.horarioId), 
+                            observacion: ubicacionNombre || null // Guardamos en 'observacion'
+                        });
                     });
                 });
-
-                // Usamos un bucle para enviar las actualizaciones una por una.
-                // Es menos eficiente que .upsert(), pero mucho más seguro y claro.
-                for (const update of updates) {
-                    const { error } = await supabase
-                        .from('horarios')
-                        .update({ observacion: update.observacion }) // Solo actualizamos la columna 'observacion'
-                        .eq('id', update.id); // Donde el 'id' coincida
-
-                    if (error) {
-                        alert(`Error al guardar el cambio para el horario ID ${update.id}: ${error.message}`);
-                        return; // Detenemos el proceso si hay un error
-                    }
+                
+                const { error } = await supabase.from('horarios').upsert(updates);
+                if (error) {
+                    alert("Error al guardar: " + error.message);
+                } else {
+                    alert("¡Cambios guardados con éxito!");
+                    showView('calendar');
                 }
-
-                alert("¡Cambios guardados con éxito!");
-                showView('calendar');
             };
             
             window.showView = showView;
 
-            // 4. PUNTO DE ENTRADA DE LA APLICACIÓN (SIN CAMBIOS)
+            // 4. PUNTO DE ENTRADA DE LA APLICACIÓN
             const init = async () => {
                 if (localStorage.getItem('hhu_admin_logged_in') === 'true') {
                     const connected = await checkSupabaseConnection();
@@ -297,3 +281,4 @@
     </script>
 </body>
 </html>
+
