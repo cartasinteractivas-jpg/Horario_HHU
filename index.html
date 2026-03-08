@@ -210,7 +210,8 @@
                         if (h.observacion) {
                             const esTurnoDia = turnosDia.includes(h.codigo_turno_id);
                             const turnoGrupo = esTurnoDia ? 'Día' : 'Noche';
-                            const targetZone = document.querySelector(`.drop-zone[data-turno="${turnoGrupo}"][data-ubicacion-nombre="${h.observacion}"]`);
+                            // Busca una zona que coincida y que AÚN ESTÉ VACÍA
+                            const targetZone = document.querySelector(`.drop-zone[data-turno="${turnoGrupo}"][data-ubicacion-nombre="${h.observacion}"]:empty`);
                             if (targetZone) {
                                 const ficha = document.createElement('div');
                                 ficha.className = 'ficha-personal';
@@ -243,7 +244,23 @@
                         }
                     });
                     
-                    document.querySelectorAll('.drop-zone').forEach(el => new Sortable(el, { group: 'personal', animation: 150 }));
+                    // --- INICIO DE LA NUEVA LÓGICA DE GRUPOS SEPARADOS ---
+                    // Configura el arrastre para el personal de DÍA
+                    document.querySelectorAll('.drop-zone[data-turno="Día"], #personal-dia-pool').forEach(el => {
+                        new Sortable(el, {
+                            group: 'personal-dia', // Grupo exclusivo para el día
+                            animation: 150
+                        });
+                    });
+
+                    // Configura el arrastre para el personal de NOCHE
+                    document.querySelectorAll('.drop-zone[data-turno="Noche"], #personal-noche-pool').forEach(el => {
+                        new Sortable(el, {
+                            group: 'personal-noche', // Grupo exclusivo para la noche
+                            animation: 150
+                        });
+                    });
+                    // --- FIN DE LA NUEVA LÓGICA DE GRUPOS SEPARADOS ---
 
                 } catch (error) {
                     console.error('Error al inicializar la vista del puzzle:', error);
@@ -251,7 +268,7 @@
                 }
             };
 
-            // --- FUNCIÓN guardarCambios() REESCRITA ---
+            // --- FUNCIÓN guardarCambios() SIN CAMBIOS ---
             window.guardarCambios = async () => {
                 const updates = [];
                 document.querySelectorAll('.ficha-personal').forEach(ficha => {
@@ -265,17 +282,15 @@
                     });
                 });
 
-                // Usamos un bucle para enviar las actualizaciones una por una.
-                // Es menos eficiente que .upsert(), pero mucho más seguro y claro.
                 for (const update of updates) {
                     const { error } = await supabase
                         .from('horarios')
-                        .update({ observacion: update.observacion }) // Solo actualizamos la columna 'observacion'
-                        .eq('id', update.id); // Donde el 'id' coincida
+                        .update({ observacion: update.observacion })
+                        .eq('id', update.id);
 
                     if (error) {
                         alert(`Error al guardar el cambio para el horario ID ${update.id}: ${error.message}`);
-                        return; // Detenemos el proceso si hay un error
+                        return;
                     }
                 }
 
