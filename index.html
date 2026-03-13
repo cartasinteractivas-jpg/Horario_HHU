@@ -6,14 +6,19 @@
     <title>HHU - Administración</title>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="https://cdn.jsdelivr.net/npm/sortablejs@latest/Sortable.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.2/jspdf.plugin.autotable.min.js"></script>
+
     <style>
+        /* --- ESTILOS EXISTENTES --- */
         body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; background-color: #f0f2f5; color: #1c1c1e; margin: 0; }
         .hidden { display: none !important; }
         .page-container { padding: 1.5rem; }
-        .card { background: white; padding: 1.5rem; border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.1   ); }
+        .card { background: white; padding: 1.5rem; border-radius: 12px; box-shadow: 0 4px 12px rgba(0,0,0,0.1 ); }
         .header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem; flex-wrap: wrap; gap: 1rem; }
         .header h1 { margin: 0; font-size: 1.75rem; }
-        .nav-button { background-color: #007aff; color: white; padding: 0.6rem 1.2rem; border: none; border-radius: 6px; cursor: pointer; text-decoration: none; font-weight: 500; }
+        .nav-button { background-color: #007aff; color: white; padding: 0.6rem 1.2rem; border: none; border-radius: 8px; cursor: pointer; text-decoration: none; font-weight: 500; transition: background-color 0.2s; }
+        .nav-button:hover { background-color: #005bb5; }
         #status-indicator { padding: 0.5rem 1rem; border-radius: 6px; font-weight: 500; }
         .status-ok { background-color: #34c759; color: white; }
         .status-error { background-color: #ff3b30; color: white; }
@@ -28,8 +33,7 @@
         .dia-semana { font-weight: 600; color: #6c6c70; text-align: center; padding: 0.5rem 0; }
         .dia-calendario { border: 1px solid #e5e5ea; min-height: 100px; padding: 0.5rem; border-radius: 6px; cursor: pointer; transition: background-color 0.2s; }
         .dia-calendario:hover { background-color: #eef5ff; }
-        .dia-numero { font-weight: 500; }
-        .dia-vacio { border: none; cursor: default; }
+        .dia-vacio { border: none; cursor: default; background-color: transparent; }
         .puzzle-container { display: flex; flex-direction: column; gap: 2rem; max-width: 1400px; margin: auto; }
         .tabla-container { flex-grow: 1; }
         .personal-container { width: 100%; }
@@ -40,28 +44,55 @@
         .ubicacion-col { width: 150px; font-weight: 600; }
         .drop-zone { min-height: 38px; display: flex; flex-wrap: wrap; align-items: center; gap: 4px; padding: 4px; }
         .ficha-personal { background-color: #eef5ff; padding: 8px 12px; border-radius: 4px; cursor: grab; border: 1px solid #007aff; user-select: none; text-align: center; font-size: 0.9rem; }
+        .calendar-header-title { display: flex; align-items: center; gap: 1rem; }
+        .month-nav-button { background: none; border: none; cursor: pointer; font-size: 2rem; color: #007aff; padding: 0 0.5rem; }
+        .month-nav-button:hover { color: #005bb5; }
+        .controls { display: flex; align-items: center; gap: 1rem; }
+        #selectorPersonal { font-size: 1.1rem; padding: 0.6rem 1rem; border-radius: 8px; border: 1px solid #c7c7cc; background-color: white; cursor: pointer; -webkit-appearance: none; -moz-appearance: none; appearance: none; background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' fill='currentColor' class='bi bi-chevron-down' viewBox='0 0 16 16'%3E%3Cpath fill-rule='evenodd' d='M1.646 4.646a.5.5 0 0 1 .708 0L8 10.293l5.646-5.647a.5.5 0 0 1 .708.708l-6 6a.5.5 0 0 1-.708 0l-6-6a.5.5 0 0 1 0-.708z'/%3E%3C/svg%3E" ); background-repeat: no-repeat; background-position: right 1rem center; padding-right: 2.5rem; }
+        .report-button { background-color: #34c759; }
+        .report-button:hover { background-color: #2b9d48; }
+
+        /* --- NUEVOS ESTILOS PARA EL OVERLAY DE CARGA --- */
+        #loader-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.6);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 1000;
+            color: white;
+            font-size: 1.5rem;
+            text-align: center;
+        }
     </style>
 </head>
 <body>
-    <!-- VISTA 1: LOGIN -->
+    <!-- VISTAS (Sin cambios) -->
     <div id="login-view" class="page-container">
         <div class="login-container card">
             <h1>Horario HHU</h1>
             <div class="input-group"><label for="usuario">Usuario</label><input type="text" id="usuario" required></div>
-            <div class="input-group"><label for="password">Contraseña</label><input type="text" id="password" required></div>
-            <button type="button" id="login-button">Ingresar</button>
+            <div class="input-group"><label for="password">Contraseña</label><input type="password" id="password" required></div>
+            <button type="button" id="login-button" class="nav-button">Ingresar</button>
             <p id="error-message" class="error-message"></p>
         </div>
     </div>
-
-    <!-- VISTA 2: CALENDARIO -->
     <div id="calendar-view" class="page-container hidden">
         <div class="calendar-container card">
             <div class="header">
-                <h1>Horarios - Marzo 2026</h1>
+                <div class="calendar-header-title">
+                    <button id="prev-month-button" class="month-nav-button">◀</button>
+                    <h1 id="calendar-title"></h1>
+                    <button id="next-month-button" class="month-nav-button">▶</button>
+                </div>
                 <div id="status-indicator"></div>
                 <div class="controls">
-                    <select id="selectorPersonal" class="selector-personal"><option value="Enfermero">Enfermeros</option><option value="Técnico">Técnicos</option></select>
+                    <select id="selectorPersonal"><option value="Enfermero">Enfermeros</option><option value="Técnico">Técnicos</option></select>
+                    <button id="report-button" class="nav-button report-button">Generar Reporte</button>
                     <button id="logout-button" class="nav-button" style="background-color: #ff3b30;">Cerrar Sesión</button>
                 </div>
             </div>
@@ -70,8 +101,6 @@
             </div>
         </div>
     </div>
-
-    <!-- VISTA 3: PUZZLE DE MODIFICACIÓN -->
     <div id="puzzle-view" class="page-container hidden">
         <div class="puzzle-container">
             <div class="tabla-container card">
@@ -93,23 +122,33 @@
             </div>
         </div>
     </div>
+
+    <!-- NUEVO OVERLAY DE CARGA -->
+    <div id="loader-overlay" class="hidden">
+        <p id="loader-text">Generando reporte...</p>
+    </div>
     <script>
         document.addEventListener('DOMContentLoaded', () => {
-            // 1. CONFIGURACIÓN (SIN CAMBIOS)
+            // 1. CONFIGURACIÓN
             const supabaseUrl = 'https://rrubzwdrsuyjntoejmew.supabase.co';
             const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJydWJ6d2Ryc3V5am50b2VqbWV3Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzIxNDgxMzksImV4cCI6MjA4NzcyNDEzOX0.2skpmRdeb43Ck0IUAKyBcW5g3KAHPf7_st-QaAJ2K0E';
             const supabase = window.supabase.createClient(supabaseUrl, supabaseKey );
 
             const views = { login: document.getElementById('login-view'), calendar: document.getElementById('calendar-view'), puzzle: document.getElementById('puzzle-view') };
             const statusIndicator = document.getElementById('status-indicator');
+            // --- NUEVA REFERENCIA AL LOADER ---
+            const loaderOverlay = document.getElementById('loader-overlay');
+            const loaderText = document.getElementById('loader-text');
+            
+            let currentDate = new Date(2026, 2, 1); 
 
             const ubicacionesFijas = {
                 Enfermero: ["JEFATURA", "LIDER", "UCIM", "UCIM", "LADO I", "LADO II", "LADO III", "LADO IV", "LADO V", "LADO VI", "CP", "SM"],
                 Técnico: ["MUESTRA", "UCIM", "UCIM", "LADO I", "LADO I", "LADO II", "LADO II", "LADO III", "LADO III", "LADO IV", "LADO IV", "S. MENTAL", "SALIDA", "SALIDA"]
             };
 
-            // 2. LÓGICA DE NAVEGACIÓN Y SESIÓN (SIN CAMBIOS)
-            const showView = (viewName) => {
+            // 2. LÓGICA DE NAVEGACIÓN Y SESIÓN (Sin cambios)
+            window.showView = (viewName) => {
                 for (const key in views) views[key].classList.toggle('hidden', key !== viewName);
             };
 
@@ -142,9 +181,8 @@
                         alert("Login correcto, pero no se pudo conectar con la base de datos. Revisa la configuración de CORS en Supabase o la consola del navegador (F12).");
                     }
                 } else {
-                    const errorMsg = document.getElementById('error-message');
-                    errorMsg.textContent = 'Usuario o contraseña incorrectos.';
-                    errorMsg.style.display = 'block';
+                    document.getElementById('error-message').textContent = 'Usuario o contraseña incorrectos.';
+                    document.getElementById('error-message').style.display = 'block';
                 }
             };
 
@@ -154,13 +192,17 @@
                 showView('login');
             };
 
-            // 3. LÓGICA DE LAS VISTAS (CON LAS CORRECCIONES)
+            // 3. LÓGICA DE LAS VISTAS (Función de reporte modificada)
             const renderCalendar = () => {
                 const grid = document.querySelector('.calendario-grid');
+                const calendarTitle = document.getElementById('calendar-title');
                 document.querySelectorAll('.dia-calendario, .dia-vacio').forEach(el => el.remove());
-                const mes = 2, ano = 2026;
-                const primerDia = new Date(ano, mes, 1).getDay();
-                const offset = (primerDia === 0) ? 6 : primerDia - 1;
+                const mes = currentDate.getMonth();
+                const ano = currentDate.getFullYear();
+                const nombreMes = new Intl.DateTimeFormat('es-ES', { month: 'long' }).format(currentDate);
+                calendarTitle.textContent = `${nombreMes.charAt(0).toUpperCase() + nombreMes.slice(1)} ${ano}`;
+                const primerDiaDelMes = new Date(ano, mes, 1).getDay();
+                const offset = (primerDiaDelMes === 0) ? 6 : primerDiaDelMes - 1; 
                 for (let i = 0; i < offset; i++) grid.appendChild(document.createElement('div')).classList.add('dia-vacio');
                 const diasEnMes = new Date(ano, mes + 1, 0).getDate();
                 for (let dia = 1; dia <= diasEnMes; dia++) {
@@ -172,45 +214,35 @@
                 }
             };
 
-            // --- FUNCIÓN initializePuzzleView() REESCRITA ---
-            const initializePuzzleView = async (dia) => {
+            window.initializePuzzleView = async (dia) => {
                 const tipoPersonalSeleccionado = document.getElementById('selectorPersonal').value;
                 showView('puzzle');
-                document.getElementById('titulo-dia').textContent = `Guardia del ${dia} de Marzo - ${tipoPersonalSeleccionado}s`;
-                
+                const mesActual = currentDate.getMonth();
+                const anoActual = currentDate.getFullYear();
+                const nombreMes = new Intl.DateTimeFormat('es-ES', { month: 'long' }).format(currentDate);
+                document.getElementById('titulo-dia').textContent = `Guardia del ${dia} de ${nombreMes} - ${tipoPersonalSeleccionado}s`;
                 const tablaBody = document.getElementById('tabla-ubicaciones');
                 const diaPool = document.getElementById('personal-dia-pool');
                 const nochePool = document.getElementById('personal-noche-pool');
                 tablaBody.innerHTML = '<tr><td colspan="3">Cargando datos...</td></tr>';
                 diaPool.innerHTML = '';
                 nochePool.innerHTML = '';
-
-                const fecha = `2026-03-${String(dia).padStart(2, '0')}`;
-
+                const fecha = `${anoActual}-${String(mesActual + 1).padStart(2, '0')}-${String(dia).padStart(2, '0')}`;
                 try {
                     const listaUbicaciones = ubicacionesFijas[tipoPersonalSeleccionado];
                     if (!listaUbicaciones) throw new Error(`No se encontró lista de ubicaciones para ${tipoPersonalSeleccionado}`);
-
                     tablaBody.innerHTML = '';
                     listaUbicaciones.forEach((nombreUbicacion) => {
                         tablaBody.innerHTML += `<tr><td class="ubicacion-col">${nombreUbicacion}</td><td><div class="drop-zone" data-turno="Día" data-ubicacion-nombre="${nombreUbicacion}"></div></td><td><div class="drop-zone" data-turno="Noche" data-ubicacion-nombre="${nombreUbicacion}"></div></td></tr>`;
                     });
-
-                    const { data: horarios, error } = await supabase
-                        .from('horarios')
-                        .select('id, observacion, codigo_turno_id, personal(id, nombre_completo, tipo_personal)')
-                        .eq('fecha', fecha);
+                    const { data: horarios, error } = await supabase.from('horarios').select('id, observacion, codigo_turno_id, personal(id, nombre_completo, tipo_personal)').eq('fecha', fecha);
                     if (error) throw error;
-
                     const horariosFiltrados = horarios.filter(h => h.personal && h.personal.tipo_personal === tipoPersonalSeleccionado);
                     const turnosDia = ['D3', 'M3', 'R3', 'T5'];
-
-                    // 1. Primero, coloca a los que YA tienen una ubicación guardada
                     horariosFiltrados.forEach(h => {
                         if (h.observacion) {
                             const esTurnoDia = turnosDia.includes(h.codigo_turno_id);
                             const turnoGrupo = esTurnoDia ? 'Día' : 'Noche';
-                            // Busca una zona que coincida y que AÚN ESTÉ VACÍA
                             const targetZone = document.querySelector(`.drop-zone[data-turno="${turnoGrupo}"][data-ubicacion-nombre="${h.observacion}"]:empty`);
                             if (targetZone) {
                                 const ficha = document.createElement('div');
@@ -222,20 +254,13 @@
                             }
                         }
                     });
-
-                    // 2. Ahora, itera sobre los que quedan y asígnalos a la primera ubicación vacía
                     horariosFiltrados.forEach(h => {
                         if (!h.colocado) {
                             const esTurnoDia = turnosDia.includes(h.codigo_turno_id);
                             const turnoGrupo = esTurnoDia ? 'Día' : 'Noche';
-                            
                             const zonasDisponibles = document.querySelectorAll(`.drop-zone[data-turno="${turnoGrupo}"][data-ubicacion-nombre]`);
                             let targetZone = Array.from(zonasDisponibles).find(zona => zona.childElementCount === 0);
-
-                            if (!targetZone) {
-                                targetZone = esTurnoDia ? diaPool : nochePool;
-                            }
-
+                            if (!targetZone) targetZone = esTurnoDia ? diaPool : nochePool;
                             const ficha = document.createElement('div');
                             ficha.className = 'ficha-personal';
                             ficha.textContent = h.personal.nombre_completo.split(',')[0];
@@ -243,75 +268,97 @@
                             targetZone.appendChild(ficha);
                         }
                     });
-                    
-                    // --- INICIO DE LA NUEVA LÓGICA DE GRUPOS SEPARADOS ---
-                    // Configura el arrastre para el personal de DÍA
-                    document.querySelectorAll('.drop-zone[data-turno="Día"], #personal-dia-pool').forEach(el => {
-                        new Sortable(el, {
-                            group: 'personal-dia', // Grupo exclusivo para el día
-                            animation: 150
-                        });
-                    });
-
-                    // Configura el arrastre para el personal de NOCHE
-                    document.querySelectorAll('.drop-zone[data-turno="Noche"], #personal-noche-pool').forEach(el => {
-                        new Sortable(el, {
-                            group: 'personal-noche', // Grupo exclusivo para la noche
-                            animation: 150
-                        });
-                    });
-                    // --- FIN DE LA NUEVA LÓGICA DE GRUPOS SEPARADOS ---
-
+                    document.querySelectorAll('.drop-zone[data-turno="Día"], #personal-dia-pool').forEach(el => new Sortable(el, { group: 'personal-dia', animation: 150 }));
+                    document.querySelectorAll('.drop-zone[data-turno="Noche"], #personal-noche-pool').forEach(el => new Sortable(el, { group: 'personal-noche', animation: 150 }));
                 } catch (error) {
                     console.error('Error al inicializar la vista del puzzle:', error);
                     tablaBody.innerHTML = `<tr><td colspan="3">Error al cargar datos: ${error.message}.</td></tr>`;
                 }
             };
 
-            // --- FUNCIÓN guardarCambios() SIN CAMBIOS ---
             window.guardarCambios = async () => {
                 const updates = [];
                 document.querySelectorAll('.ficha-personal').forEach(ficha => {
-                    const horarioId = parseInt(ficha.dataset.horarioId);
-                    const zona = ficha.closest('.drop-zone');
-                    const ubicacionNombre = zona.dataset.ubicacionNombre || null;
-                    
-                    updates.push({
-                        id: horarioId,
-                        observacion: ubicacionNombre
-                    });
+                    updates.push({ id: parseInt(ficha.dataset.horarioId), observacion: ficha.closest('.drop-zone').dataset.ubicacionNombre || null });
                 });
-
                 for (const update of updates) {
-                    const { error } = await supabase
-                        .from('horarios')
-                        .update({ observacion: update.observacion })
-                        .eq('id', update.id);
-
-                    if (error) {
-                        alert(`Error al guardar el cambio para el horario ID ${update.id}: ${error.message}`);
-                        return;
-                    }
+                    const { error } = await supabase.from('horarios').update({ observacion: update.observacion }).eq('id', update.id);
+                    if (error) { alert(`Error al guardar el cambio para el horario ID ${update.id}: ${error.message}`); return; }
                 }
-
                 alert("¡Cambios guardados con éxito!");
                 showView('calendar');
             };
-            
-            window.showView = showView;
 
-            // 4. PUNTO DE ENTRADA DE LA APLICACIÓN (SIN CAMBIOS)
+            // --- FUNCIÓN generarReportePDF ACTUALIZADA CON EL OVERLAY ---
+            const generarReportePDF = async () => {
+                const tipoPersonal = document.getElementById('selectorPersonal').value;
+                const mes = currentDate.getMonth();
+                const ano = currentDate.getFullYear();
+                const nombreMes = new Intl.DateTimeFormat('es-ES', { month: 'long' }).format(currentDate);
+
+                // Mostrar el overlay
+                loaderText.textContent = `Generando reporte para ${tipoPersonal}s de ${nombreMes} ${ano}.\nEsto puede tardar un momento...`;
+                loaderOverlay.classList.remove('hidden');
+
+                try {
+                    const diasDelMes = new Date(ano, mes + 1, 0).getDate();
+                    const { data: horarios, error } = await supabase
+                        .from('horarios')
+                        .select('fecha, observacion, codigo_turno_id, personal(nombre_completo, tipo_personal)')
+                        .eq('personal.tipo_personal', tipoPersonal)
+                        .gte('fecha', `${ano}-${String(mes + 1).padStart(2, '0')}-01`)
+                        .lte('fecha', `${ano}-${String(mes + 1).padStart(2, '0')}-${diasDelMes}`);
+
+                    if (error) throw error;
+
+                    const { jsPDF } = window.jspdf;
+                    const doc = new jsPDF({ orientation: 'landscape', unit: 'mm', format: 'a4' });
+                    const ubicaciones = ubicacionesFijas[tipoPersonal];
+                    const diasSemana = ["DOMINGO", "LUNES", "MARTES", "MIÉRCOLES", "JUEVES", "VIERNES", "SÁBADO"];
+                    
+                    for (let semana = 0; semana < Math.ceil(diasDelMes / 7); semana++) {
+                        const inicioSemana = semana * 7 + 1;
+                        const finSemana = Math.min((semana + 1) * 7, diasDelMes);
+                        if (semana > 0) doc.addPage();
+                        
+                        doc.setFontSize(14);
+                        doc.text(`Reporte de Horarios - ${tipoPersonal}s`, 14, 15);
+                        doc.setFontSize(10);
+                        doc.text(`${nombreMes.toUpperCase()} ${ano} - Semana del ${inicioSemana} al ${finSemana}`, 14, 22);
+
+                        const head = [['UBICACIÓN']];
+                        const body = ubicaciones.map(u => [u]);
+
+                        for (let dia = inicioSemana; dia <= finSemana; dia++) {
+                            const fechaActual = new Date(ano, mes, dia);
+                            head[0].push(`${dia} ${diasSemana[fechaActual.getDay()]}\nDÍA`);
+                            head[0].push(`NOCHE`);
+                            const horariosDia = horarios.filter(h => new Date(h.fecha).getUTCDate() === dia);
+                            for (let i = 0; i < ubicaciones.length; i++) {
+                                const u = ubicaciones[i];
+                                const personalDia = horariosDia.find(h => h.observacion === u && ['D3', 'M3', 'R3', 'T5'].includes(h.codigo_turno_id));
+                                const personalNoche = horariosDia.find(h => h.observacion === u && !['D3', 'M3', 'R3', 'T5'].includes(h.codigo_turno_id));
+                                body[i].push(personalDia ? personalDia.personal.nombre_completo.split(',')[0] : '');
+                                body[i].push(personalNoche ? personalNoche.personal.nombre_completo.split(',')[0] : '');
+                            }
+                        }
+                        doc.autoTable({ head: head, body: body, startY: 25, theme: 'grid', styles: { fontSize: 6, cellPadding: 1 }, headStyles: { fillColor: [22, 160, 133], halign: 'center', fontSize: 7 } });
+                    }
+                    doc.save(`Reporte_${tipoPersonal}s_${nombreMes}_${ano}.pdf`);
+                } catch (error) {
+                    alert("Error al generar el reporte: " + error.message);
+                } finally {
+                    // Ocultar el overlay, tanto si hubo éxito como si hubo error
+                    loaderOverlay.classList.add('hidden');
+                }
+            };
+
+            // 4. PUNTO DE ENTRADA Y EVENTOS
             const init = async () => {
                 if (localStorage.getItem('hhu_admin_logged_in') === 'true') {
                     const connected = await checkSupabaseConnection();
-                    if (connected) {
-                        const savedUsername = localStorage.getItem('hhu_admin_username');
-                        if (savedUsername) document.getElementById('usuario').value = savedUsername;
-                        showView('calendar');
-                        renderCalendar();
-                    } else {
-                        logout();
-                    }
+                    if (connected) { showView('calendar'); renderCalendar(); } 
+                    else { logout(); }
                 } else {
                     showView('login');
                 }
@@ -319,10 +366,13 @@
 
             document.getElementById('login-button').addEventListener('click', login);
             document.getElementById('logout-button').addEventListener('click', logout);
+            document.getElementById('selectorPersonal').addEventListener('change', renderCalendar);
+            document.getElementById('report-button').addEventListener('click', generarReportePDF);
+            document.getElementById('prev-month-button').addEventListener('click', () => { currentDate.setMonth(currentDate.getMonth() - 1); renderCalendar(); });
+            document.getElementById('next-month-button').addEventListener('click', () => { currentDate.setMonth(currentDate.getMonth() + 1); renderCalendar(); });
             
             init();
         });
     </script>
 </body>
 </html>
-
